@@ -4,28 +4,21 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DMS.DAL.Configurations;
 
-public abstract class UserConfiguration : BaseEntityConfiguration<User>
+public class DocumentsConfiguration : BaseEntityConfiguration<Document>
 {
-    public virtual void Configure(EntityTypeBuilder<User> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<Document> builder)
     {
-        builder.HasKey(e => e.Id);
-        builder.Property(e => e.Id).ValueGeneratedOnAdd();
+        builder.ToTable("documents");
 
-        builder.Property(e => e.EntityId).IsRequired();
-        builder.HasIndex(e => e.EntityId).IsUnique();
-        
-        builder.Property(e => e.Username).IsRequired();
-        builder.Property(e => e.Username).HasMaxLength(20);
+        builder.Property(x => x.Name).IsRequired();
+        builder.Property(x => x.Name).HasMaxLength(255);
 
-        builder.Property(e => e.Email).IsRequired();
-        builder.Property(e => e.Email).HasMaxLength(50);
-        
-        builder.Property(e => e.Password).IsRequired();
-        builder.Property(e => e.Password).HasMaxLength(100);
-        
-        builder.Property(e => e.CreatedAt).IsRequired();
-        
-        builder.Property(e => e.UpdatedOn).IsRequired(false);
+        builder.Property(x => x.Type).IsRequired();
+        builder.Property(x => x.Type).HasMaxLength(100);
 
+        builder.Property(x => x.Size).IsRequired();
+
+        builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.UpdatedOn).IsRequired(false);
     }
 }
