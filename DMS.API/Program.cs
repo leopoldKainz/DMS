@@ -1,4 +1,7 @@
 
+using DMS.Business.Interfaces;
+using DMS.Business.Services;
+
 namespace DMS.API
 {
     public class Program
@@ -8,6 +11,7 @@ namespace DMS.API
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddScoped<IDocumentService, DocumentService>();
 
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

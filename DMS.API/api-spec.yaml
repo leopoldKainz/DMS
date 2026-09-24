@@ -1,0 +1,33 @@
+openapi: 3.1.0
+info:
+  title: DMS API
+  description: DMS API
+  version: 1.0.0
+servers:
+  - url: 'https'
+paths:
+  /Document/upload:
+    post:
+      tags:
+        - Document
+      summary: Upload multiple files
+      operationId: UploadMultipleFiles
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+                - files
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request (e.g., no files were uploaded, or an error occurred)
