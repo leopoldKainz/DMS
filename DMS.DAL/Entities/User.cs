@@ -1,9 +1,9 @@
 
+using DMS.DAL.Interfaces;
+
 namespace DMS.DAL.Entities;
-public class User : IEntity, IAuditable
+public class User : BaseEntity, IUpdateAuditable
 {
-    public int Id { get; set; }
-    public Guid EntityId { get; set;} = Guid.NewGuid();
     public string? Username { get; set; }
     public string? Email { get; set; }
     public string Password { get; set; }

@@ -1,12 +1,12 @@
+using DMS.DAL.Interfaces;
+
 namespace DMS.DAL.Entities;
 
-public class Document: IEntity, IAuditable
+public class Document: BaseEntity, IUpdateAuditable
 {
-    public int Id { get; set; }
-    public Guid EntityId { get; set;} = Guid.NewGuid();
     public string Name { get; set; }
     public string Type { get; set; }
-    public Int64 Size { get; set; }
+    public long Size { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedOn { get; set; }
     

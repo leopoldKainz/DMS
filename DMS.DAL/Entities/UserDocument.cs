@@ -1,11 +1,10 @@
 using DMS.DAL.Enums;
+using DMS.DAL.Interfaces;
 
 namespace DMS.DAL.Entities;
 
-public class UserDocument: IEntity, IAuditable
+public class UserDocument: IUpdateAuditable
 {
-    public int Id { get; set; }
-    public Guid EntityId { get; set;} = Guid.NewGuid();
     public User User { get; set; }
     public Permission Permission { get; set; }
     public Document Document { get; set; }

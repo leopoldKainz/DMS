@@ -1,9 +1,9 @@
+using DMS.DAL.Interfaces;
+
 namespace DMS.DAL.Entities;
 
-public class ShareRequest : IEntity, IAuditable
+public class ShareRequest : BaseEntity, IUpdateAuditable
 {
-    public int Id { get; set; }
-    public Guid EntityId { get; set;} = Guid.NewGuid();
     public User Owner { get; set; }
     public User Reciever { get; set; }
     public Document Document { get; set; }
