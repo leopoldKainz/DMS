@@ -1,12 +1,16 @@
+using System.Linq.Expressions;
 using DMS.DAL.Entities;
 
 namespace DMS.DAL.Repositories.Interfaces;
 
 // Generic read access for every entity deriving from BaseEntity.
-public interface IBaseRepository<T> where T : BaseEntity
+public interface IBaseRepository<T> where T : class
 {
-    Task<IReadOnlyList<T>> GetAll(CancellationToken cancellationToken = default);
-
-    // Looks up by the int primary key, not by EntityId.
-    Task<T?> GetById(int id, CancellationToken cancellationToken = default);
+    Task<T?> GetByIdAsync(object id, CancellationToken ct = default);
+    Task<List<T>> ListAsync(CancellationToken ct = default);
+    Task<List<T>> ListAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default);
+    Task AddAsync(T entity, CancellationToken ct = default);
+    void Update(T entity);
+    void Remove(T entity);
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
