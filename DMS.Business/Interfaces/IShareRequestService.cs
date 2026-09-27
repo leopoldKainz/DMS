@@ -1,11 +1,16 @@
-namespace DMS.Business.Interfaces;
-namespace DMS.Business.Models;
+using DMS.DAL.Entities;
+using DMS.DAL.Enums;
 
-public interface IShareRequestService
+namespace DMS.Business.Interfaces;
+
+public interface IShareRequestService : IBaseService<ShareRequest>
 {
-    Task<ShareRequest> CreateShareRequestAsync(int documentId, int userId, Permission permission, CancellationToken ct = default);
-    Task<ShareRequest?> GetShareRequestByIdAsync(int shareRequestId, CancellationToken ct = default);
-    Task<List<ShareRequest>> GetShareRequestsByUserIdAsync(int userId, CancellationToken ct = default);
-    Task<List<ShareRequest>> GetShareRequestsByDocumentIdAsync(int documentId, CancellationToken ct = default);
-    Task UpdateShareRequestStatusAsync(int shareRequestId, ShareRequestStatus status, CancellationToken ct = default);
+    Task<IReadOnlyList<ShareRequest>> GetByOwnerAsync(int ownerId, CancellationToken ct = default);
+    Task<IReadOnlyList<ShareRequest>> GetByRecieverAsync(int recieverId, CancellationToken ct = default);
+    Task<IReadOnlyList<ShareRequest>> GetByDocumentAsync(int documentId, CancellationToken ct = default);
+    Task<ShareRequest?> GetWithRelationsAsync(int shareRequestId, CancellationToken ct = default);
+    Task<ShareRequest> CreateAsync(int ownerId, int recieverId, int documentId, CancellationToken ct = default);
+    Task<bool> ExistsAsync(int ownerId, int recieverId, int documentId, CancellationToken ct = default);
+    Task<bool> AcceptAsync(int shareRequestId, Permission permission, CancellationToken ct = default);
+    Task<bool> DeclineAsync(int shareRequestId, CancellationToken ct = default);
 }

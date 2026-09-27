@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using DMS.DAL.Entities;
 
-namespace DMS.Business.Interfaces
+namespace DMS.Business.Interfaces;
+
+public interface IUserService : IBaseService<User>
 {
-    public interface IUserService : IBaseService
-    {
-
-    }
+    Task<User?> GetByUsernameAsync(string username, CancellationToken ct = default);
+    Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<bool> UsernameExistsAsync(string username, CancellationToken ct = default);
+    Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
+    Task<User?> GetWithDocumentsAsync(int userId, CancellationToken ct = default);
+    Task<User?> AuthenticateAsync(string usernameOrEmail, string password, CancellationToken ct = default);
+    Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken ct = default);
 }
