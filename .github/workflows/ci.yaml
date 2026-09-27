@@ -19,12 +19,13 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
 
       - name: Restore dependencies
-        run: dotnet restore DMS.sln
+        run: dotnet restore DMS.slnx
 
       - name: Build solution
-        run: dotnet build DMS.sln --no-restore --configuration Release
+        run: dotnet build DMS.slnx --no-restore --configuration Release
 
       - name: Run tests
-        run: dotnet test DMS.sln --no-build --configuration Release --verbosity normal
+        run: dotnet test DMS.slnx --no-build --configuration Release --verbosity normal
