@@ -39,8 +39,8 @@ public class DocumentController : ControllerBase
 
             var document = new Document
             {
-                Name = Path.GetFileName(file.FileName),
-                Type = string.IsNullOrWhiteSpace(file.ContentType) ? Path.GetExtension(file.FileName) : file.ContentType,
+                Name = Path.GetFileNameWithoutExtension(file.FileName),
+                Type = Path.GetExtension(file.FileName).TrimStart('.'),
                 Size = file.Length
             };
 

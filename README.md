@@ -46,7 +46,7 @@ ASPNETCORE_ENVIRONMENT=Development
 From the root directory, run:
 
 ```bash
-docker compose -f local-compose.yml up --build
+docker compose --env-file .env.local -f local-compose.yml up --build
 ```
 *(Add `-d` to run in detached/background mode)*
 
@@ -66,10 +66,10 @@ The database will initialize automatically using `drawSQL-pgsql-export-2026-09-2
 
 - **Stop containers:**
   ```bash
-  docker compose -f local-compose.yml down
+  docker compose --env-file .env.local -f local-compose.yml down
   ```
 
 - **Reset database (removes volume data and triggers fresh schema initialization on next start):**
   ```bash
-  docker compose -f local-compose.yml down -v
+  docker compose --env-file .env.local -f local-compose.yml down -v
   ```
