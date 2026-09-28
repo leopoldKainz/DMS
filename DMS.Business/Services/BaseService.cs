@@ -2,8 +2,8 @@
 
 namespace DMS.Business
 {
-    public class BaseService : IBaseService
-    {
-
-    }
+    // public class BaseService : IBaseService
+    // {
+    //
+    // }
 }

@@ -1,3 +1,5 @@
+using DMS.DAL.Enums;
+
 namespace DMS.Business.Models;
 
 public class ShareRequest
