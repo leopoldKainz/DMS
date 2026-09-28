@@ -1,84 +1,85 @@
 using DMS.Business.Interfaces;
+using DMS.DAL;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace DMS.Business.Services;
 
-public class DocumentService : IDocumentService
+public class DocumentService : BaseService<Document>, IDocumentService
 {
-    //TODO: Implement the methods of the IDocumentService interface using data access layer.
-    public Task<Document?> GetByIdAsync(int id, CancellationToken ct = default)
+    public DocumentService(DmsDbContext context) : base(context)
     {
-        throw new NotImplementedException();
     }
 
-    public Task<Document?> GetByEntityIdAsync(Guid entityId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Document>> GetByUserAsync(int userId, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await _context.UserDocuments
+            .Where(ud => ud.UserId == userId)
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
     }
 
-    public Task<IReadOnlyList<Document>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<Document>> GetByUserAsync(int userId, Permission permission, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await _context.UserDocuments
+            .Where(ud => ud.UserId == userId && ud.Permission == permission)
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
     }
 
-    public Task<bool> ExistsAsync(int id, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Document>> SearchByNameAsync(int userId, string searchTerm, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await _context.UserDocuments
+            .Where(ud => ud.UserId == userId && EF.Functions.ILike(ud.Document.Name, $"%{searchTerm}%"))
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
     }
 
-    public Task<Document> AddAsync(Document entity, CancellationToken ct = default)
+    public async Task<Document?> GetWithUsersAsync(int documentId, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await _dbSet
+            .Include(d => d.UserDocuments)
+            .ThenInclude(ud => ud.User)
+            .FirstOrDefaultAsync(d => d.Id == documentId, ct);
     }
 
-    public void Update(Document entity)
+    public async Task<Document> AddForOwnerAsync(int ownerUserId, Document document, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        var userExists = await _context.Users.AnyAsync(u => u.Id == ownerUserId, ct);
+        if (!userExists)
+        {
+            throw new ArgumentException($"User with ID {ownerUserId} not found.", nameof(ownerUserId));
+        }
+
+        await _dbSet.AddAsync(document, ct);
+        await _context.SaveChangesAsync(ct);
+
+        var userDocument = new UserDocument
+        {
+            UserId = ownerUserId,
+            DocumentId = document.Id,
+            Permission = Permission.Owner
+        };
+
+        await _context.UserDocuments.AddAsync(userDocument, ct);
+        await _context.SaveChangesAsync(ct);
+
+        return document;
     }
 
-    public void Remove(Document entity)
+    public async Task<bool> HasAccessAsync(int userId, int documentId, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        return await _context.UserDocuments
+            .AnyAsync(ud => ud.UserId == userId && ud.DocumentId == documentId, ct);
     }
 
-    public Task<bool> RemoveByIdAsync(int id, CancellationToken ct = default)
+    public async Task<bool> HasPermissionAsync(int userId, int documentId, Permission permission, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
-    }
-
-    public Task<IReadOnlyList<Document>> GetByUserAsync(int userId, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<IReadOnlyList<Document>> GetByUserAsync(int userId, Permission permission, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<IReadOnlyList<Document>> SearchByNameAsync(int userId, string searchTerm, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Document?> GetWithUsersAsync(int documentId, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Document> AddForOwnerAsync(int ownerUserId, Document document, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<bool> HasAccessAsync(int userId, int documentId, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<bool> HasPermissionAsync(int userId, int documentId, Permission permission, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
+        return await _context.UserDocuments
+            .AnyAsync(ud => ud.UserId == userId && ud.DocumentId == documentId && ud.Permission == permission, ct);
     }
 }

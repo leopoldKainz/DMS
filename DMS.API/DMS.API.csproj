@@ -9,9 +9,11 @@
   <ItemGroup>
     <PackageReference Include="Mapster.DependencyInjection" Version="10.0.13" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="7.3.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DMS.Business.Models\DMS.Business.Models.csproj" />
     <ProjectReference Include="..\DMS.Business\DMS.Business.csproj" />
   </ItemGroup>
 

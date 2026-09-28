@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: DMS API
-  description: DMS API
+  description: Document Management System API
   version: 1.0.0
 servers:
-  - url: 'https'
+  - url: 'http://localhost:8080'
 paths:
   /Document/upload:
     post:
@@ -12,6 +12,12 @@ paths:
         - Document
       summary: Upload multiple files
       operationId: UploadMultipleFiles
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
@@ -29,5 +35,258 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentDto'
         '400':
-          description: Bad Request (e.g., no files were uploaded, or an error occurred)
+          description: Bad Request
+
+  /Document:
+    get:
+      tags:
+        - Document
+      summary: Get all documents (optionally filtered by user)
+      operationId: GetAllDocuments
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentDto'
+
+  /Document/{id}:
+    get:
+      tags:
+        - Document
+      summary: Get document by ID
+      operationId: GetDocumentById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDto'
+        '404':
+          description: Not Found
+    delete:
+      tags:
+        - Document
+      summary: Delete document by ID
+      operationId: DeleteDocument
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+
+  /Document/search:
+    get:
+      tags:
+        - Document
+      summary: Search documents by name
+      operationId: SearchDocuments
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentDto'
+
+  /User/register:
+    post:
+      tags:
+        - User
+      summary: Register a new user
+      operationId: RegisterUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserDto'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          description: Bad Request
+
+  /User:
+    get:
+      tags:
+        - User
+      summary: Get all users
+      operationId: GetAllUsers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDto'
+
+  /User/{id}:
+    get:
+      tags:
+        - User
+      summary: Get user by ID
+      operationId: GetUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '404':
+          description: Not Found
+
+  /User/by-username/{username}:
+    get:
+      tags:
+        - User
+      summary: Get user by username
+      operationId: GetUserByUsername
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '404':
+          description: Not Found
+
+  /User/by-email/{email}:
+    get:
+      tags:
+        - User
+      summary: Get user by email
+      operationId: GetUserByEmail
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '404':
+          description: Not Found
+
+components:
+  schemas:
+    DocumentDto:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        size:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - type
+        - size
+        - createdAt
+
+    UserDto:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - createdAt
+
+    CreateUserDto:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - email
+        - password

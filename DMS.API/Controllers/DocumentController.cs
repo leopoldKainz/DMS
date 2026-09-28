@@ -1,4 +1,7 @@
 using DMS.Business.Interfaces;
+using DMS.DAL.DTOs;
+using DMS.DAL.Entities;
+using Mapster;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DMS.API.Controllers;
@@ -7,7 +10,8 @@ namespace DMS.API.Controllers;
 [Route("[controller]")]
 public class DocumentController : ControllerBase
 {
-    IDocumentService _documentService;
+    private readonly IDocumentService _documentService;
+
     public DocumentController(IDocumentService documentService)
     {
         _documentService = documentService;
@@ -15,24 +19,99 @@ public class DocumentController : ControllerBase
 
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadMultipleFiles(List<IFormFile> files)
+    public async Task<ActionResult<List<DocumentDto>>> UploadMultipleFiles(
+        List<IFormFile> files,
+        [FromQuery] int userId)
     {
-        try
+        if (files == null || files.Count == 0)
         {
-            if (files == null || !files.Any())
+            return BadRequest("No files were uploaded.");
+        }
+
+        var createdDocuments = new List<DocumentDto>();
+
+        foreach (var file in files)
+        {
+            if (file.Length == 0)
             {
-                return BadRequest("No files were uploaded.");
+                continue;
             }
 
-            /* THIS PART WILL BE IMPLEMENTED LATER WHEN THE SERVICE IS READY
-             
-            return Ok(_documentService.)
-            */
-            return Ok();
+            var document = new Document
+            {
+                Name = Path.GetFileName(file.FileName),
+                Type = string.IsNullOrWhiteSpace(file.ContentType) ? Path.GetExtension(file.FileName) : file.ContentType,
+                Size = file.Length
+            };
+
+            Document savedDocument;
+            savedDocument = await _documentService.AddForOwnerAsync(userId, document);
+
+            createdDocuments.Add(savedDocument.Adapt<DocumentDto>());
         }
-        catch(Exception ex)
+
+        return Ok(createdDocuments);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<DocumentDto>>> GetAll([FromQuery] int? userId = null)
+    {
+        IReadOnlyList<Document> documents;
+        if (userId.HasValue)
         {
-            return BadRequest(ex);
+            documents = await _documentService.GetByUserAsync(userId.Value);
         }
+        else
+        {
+            documents = await _documentService.GetAllAsync();
+        }
+
+        return Ok(documents.Adapt<List<DocumentDto>>());
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<DocumentDto>> GetById(int id)
+    {
+        var document = await _documentService.GetByIdAsync(id);
+        if (document == null)
+        {
+            return NotFound($"Document with ID {id} not found.");
+        }
+
+        return Ok(document.Adapt<DocumentDto>());
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<DocumentDto>>> Search([FromQuery] string query, [FromQuery] int? userId = null)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return await GetAll(userId);
+        }
+
+        IReadOnlyList<Document> documents;
+        if (userId.HasValue)
+        {
+            documents = await _documentService.SearchByNameAsync(userId.Value, query);
+        }
+        else
+        {
+            var allDocs = await _documentService.GetAllAsync();
+            documents = allDocs.Where(d => d.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        return Ok(documents.Adapt<List<DocumentDto>>());
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult> Delete(int id)
+    {
+        var deleted = await _documentService.RemoveByIdAsync(id);
+        if (!deleted)
+        {
+            return NotFound($"Document with ID {id} not found.");
+        }
+
+        return NoContent();
     }
 }
