@@ -1,6 +1,7 @@
-
 using DMS.Business.Interfaces;
 using DMS.Business.Services;
+using DMS.DAL.DTOs;
+using Mapster;
 
 namespace DMS.API
 {
@@ -10,7 +11,8 @@ namespace DMS.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            builder.Services.AddMapster();
+            TypeAdapterConfig.GlobalSettings.Scan(typeof(MappingConfig).Assembly);
             builder.Services.AddScoped<IDocumentService, DocumentService>();
 
             builder.Services.AddControllers();
