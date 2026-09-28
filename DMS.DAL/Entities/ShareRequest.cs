@@ -4,9 +4,9 @@ namespace DMS.DAL.Entities;
 
 public class ShareRequest : BaseEntity, IUpdateAuditable
 {
-    public User Owner { get; set; }
-    public User Reciever { get; set; }
-    public Document Document { get; set; }
+    public User Owner { get; set; } = null!;
+    public User Reciever { get; set; } = null!;
+    public Document Document { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedOn { get; set; }
 }

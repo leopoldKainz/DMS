@@ -10,9 +10,9 @@ public class ShareRequestsConfiguration : BaseEntityConfiguration<ShareRequest>
     {
         builder.ToTable("share_requests");
 
-        builder.Property<int>("OwnerId");
-        builder.Property<int>("RecieverId");
-        builder.Property<int>("DocumentId");
+        builder.Property<int>("OwnerId").HasColumnName("owner_id");
+        builder.Property<int>("RecieverId").HasColumnName("reciever_id");
+        builder.Property<int>("DocumentId").HasColumnName("document_id");
 
         builder.HasOne(x => x.Owner)
                .WithMany(x => x.OwnedShareRequests)
@@ -31,7 +31,7 @@ public class ShareRequestsConfiguration : BaseEntityConfiguration<ShareRequest>
 
         builder.HasIndex("OwnerId", "RecieverId", "DocumentId").IsUnique();
 
-        builder.Property(x => x.CreatedAt).IsRequired();
-        builder.Property(x => x.UpdatedOn).IsRequired(false);
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.UpdatedOn).HasColumnName("updated_on").IsRequired(false);
     }
 }

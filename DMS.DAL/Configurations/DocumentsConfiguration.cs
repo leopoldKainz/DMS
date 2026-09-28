@@ -10,15 +10,11 @@ public class DocumentsConfiguration : BaseEntityConfiguration<Document>
     {
         builder.ToTable("documents");
 
-        builder.Property(x => x.Name).IsRequired();
-        builder.Property(x => x.Name).HasMaxLength(255);
+        builder.Property(x => x.Name).HasColumnName("name").IsRequired().HasMaxLength(255);
+        builder.Property(x => x.Type).HasColumnName("type").IsRequired().HasMaxLength(100);
+        builder.Property(x => x.Size).HasColumnName("size").IsRequired();
 
-        builder.Property(x => x.Type).IsRequired();
-        builder.Property(x => x.Type).HasMaxLength(100);
-
-        builder.Property(x => x.Size).IsRequired();
-
-        builder.Property(x => x.CreatedAt).IsRequired();
-        builder.Property(x => x.UpdatedOn).IsRequired(false);
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.UpdatedOn).HasColumnName("updated_on").IsRequired(false);
     }
 }

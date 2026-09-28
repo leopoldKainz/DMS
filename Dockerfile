@@ -6,6 +6,7 @@ WORKDIR /src
 # Copy project files
 COPY DMS.API/DMS.API.csproj DMS.API/
 COPY DMS.Business/DMS.Business.csproj DMS.Business/
+COPY DMS.Business.Models/DMS.Business.Models.csproj DMS.Business.Models/
 COPY DMS.DAL/DMS.DAL.csproj DMS.DAL/
 
 # Restore dependencies
@@ -14,6 +15,7 @@ RUN dotnet restore DMS.API/DMS.API.csproj
 # Copy source code
 COPY DMS.API/ DMS.API/
 COPY DMS.Business/ DMS.Business/
+COPY DMS.Business.Models/ DMS.Business.Models/
 COPY DMS.DAL/ DMS.DAL/
 
 # Build and publish
