@@ -8,30 +8,30 @@ A RESTful Document Management System built with **ASP.NET Core (.NET 10)**, **En
 
 - **Document Management:** Multi-file upload, retrieval, search by name, and deletion.
 - **User Management:** Registration and user lookup by ID, username, or email.
-- **Clean Architecture:** Divided into API, Business logic, and Data Access (DAL) layers.
-- **OpenAPI / Swagger UI:** Interactive API documentation available at runtime.
+- **OpenAPI / Swagger UI:** API documentation.
 
 ---
 
 ## Prerequisites
 
 - Docker & Docker Compose
-- Optional for local development without Docker: .NET 10 SDK & PostgreSQL 17
+- *(Optional for local development without Docker)* .NET 10 SDK & PostgreSQL 17
 
 ---
 
 ## Environment Configuration
 
-The application and database configuration relies on environment variables.
+The application and database configuration relies on environment variables. You can copy the template from [`.env.example`](file:///home/leopold/FH/SEM%205/SWEN/.env.example).
 
 ### Create `.env.local`
 In the project root directory, create a `.env.local` file for local docker-compose execution:
 
 ```ini
-# PostgreSQL credentials
-POSTGRES_DB=dms_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_secure_password_here
+COMPOSE_FILE=local-compose.yml
+POSTGRES_DB=dms
+POSTGRES_USER=dms
+POSTGRES_PASSWORD=dms_password
+ASPNETCORE_ENVIRONMENT=Development
 ```
 
 > **Note:**
