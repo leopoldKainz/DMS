@@ -86,7 +86,8 @@ public class DocumentControllerTests
         var ok = result.Result as OkObjectResult;
         var dtos = ok!.Value as List<DocumentDto>;
         Assert.That(dtos, Has.Count.EqualTo(1));
-        Assert.That(dtos![0].Name, Is.EqualTo("invoice.pdf"));
+        Assert.That(dtos![0].Name, Is.EqualTo("invoice"));
+        Assert.That(dtos[0].Type, Is.EqualTo("pdf"));
         _mockService.Verify(s => s.AddForOwnerAsync(1, It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
