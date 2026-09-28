@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="DMS.API.Test/DMS.API.Test.csproj" />
   <Project Path="DMS.API/DMS.API.csproj" Id="28cc8615-16e5-49f9-a24c-0228e77dccf6" />
+  <Project Path="DMS.Business.Models/DMS.Business.Models.csproj" Id="fa6c086b-f088-4f3b-9a8d-de9e1c92f394" />
   <Project Path="DMS.Business.Test/DMS.Business.Test.csproj" />
   <Project Path="DMS.Business/DMS.Business.csproj" Id="6aff5550-440f-48c4-be59-844c4eaff50d" />
   <Project Path="DMS.DAL.Test/DMS.DAL.Test.csproj" />
