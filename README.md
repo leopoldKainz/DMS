@@ -56,6 +56,7 @@ The database will initialize automatically using `drawSQL-pgsql-export-2026-09-2
 
 | Service | URL / Port | Description |
 |---|---|---|
+| **Web UI** | `http://localhost` | React frontend (nginx, proxies `/api/*` to the API) |
 | **API** | `http://localhost:8080` | DMS REST API |
 | **Swagger UI** | `http://localhost:8080/swagger` | Interactive API documentation |
 | **PostgreSQL** | `localhost:5432` | Database instance |

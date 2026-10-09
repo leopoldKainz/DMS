@@ -28,5 +28,13 @@ services:
     env_file:
       - .env
 
+  web:
+    build:
+      context: ./DMS.Web
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
