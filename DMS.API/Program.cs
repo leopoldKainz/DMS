@@ -1,7 +1,10 @@
+using DMS.API.Filters;
 using DMS.Business.Interfaces;
+using DMS.Business.Models.Validation;
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.DTOs;
+using FluentValidation;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +44,10 @@ namespace DMS.API
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddProblemDetails();
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<ValidationFilter>();
+            });
             builder.Services.AddOpenApi();
 
             var app = builder.Build();

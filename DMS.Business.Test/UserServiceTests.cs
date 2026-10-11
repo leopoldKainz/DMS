@@ -1,6 +1,7 @@
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.Entities;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using MockQueryable.Moq;
 using Moq;
@@ -51,6 +52,20 @@ public class UserServiceTests
 
         // Act + Assert
         Assert.ThrowsAsync<ArgumentException>(() => service.AddAsync(user));
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public void AddAsync_InvalidUserEntity_ThrowsValidationException()
+    {
+        // Arrange
+        SetupUsers();
+        var service = new UserService(_mockContext.Object);
+        // Faulty user entity: empty username, invalid email format
+        var user = new User { Username = "", Email = "not-an-email", Password = "secret" };
+
+        // Act + Assert
+        Assert.ThrowsAsync<ValidationException>(() => service.AddAsync(user));
         _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

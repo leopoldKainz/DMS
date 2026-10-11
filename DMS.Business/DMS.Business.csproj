@@ -2,6 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DMS.DAL\DMS.DAL.csproj" />
+    <ProjectReference Include="..\DMS.Business.Models\DMS.Business.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
   </ItemGroup>
 
   <PropertyGroup>

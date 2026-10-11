@@ -2,6 +2,7 @@ using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using MockQueryable.Moq;
 using Moq;
@@ -76,6 +77,18 @@ public class DocumentServiceTests
 
         // Act + Assert
         Assert.ThrowsAsync<ArgumentException>(() => service.AddForOwnerAsync(unknownUserId, newDocument));
+        _mockDocuments.Verify(s => s.AddAsync(It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public void AddForOwnerAsync_InvalidDocument_ThrowsValidationException()
+    {
+        // Arrange: valid user exists, but document has empty name/type and negative size
+        var service = new DocumentService(_mockContext.Object);
+        var invalidDocument = new Document { Name = "", Type = "", Size = -5 };
+
+        // Act + Assert
+        Assert.ThrowsAsync<ValidationException>(() => service.AddForOwnerAsync(_userId, invalidDocument));
         _mockDocuments.Verify(s => s.AddAsync(It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

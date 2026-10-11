@@ -1,16 +1,25 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using DMS.Business.Interfaces;
+using DMS.Business.Models.Validation;
 using DMS.DAL;
 using DMS.DAL.Entities;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace DMS.Business.Services;
 
 public class UserService : BaseService<User>, IUserService
 {
-    public UserService(DmsDbContext context) : base(context)
+    private readonly IValidator<User> _validator;
+
+    public UserService(DmsDbContext context) : this(context, new UserValidator())
     {
+    }
+
+    public UserService(DmsDbContext context, IValidator<User> validator) : base(context)
+    {
+        _validator = validator;
     }
 
     public async Task<User?> GetByUsernameAsync(string username, CancellationToken ct = default)
@@ -39,6 +48,14 @@ public class UserService : BaseService<User>, IUserService
             .Include(u => u.UserDocuments)
             .ThenInclude(ud => ud.Document)
             .FirstOrDefaultAsync(u => u.EntityId == userId, ct);
+    }
+
+    public async Task<User?> GetWithDocumentsAsync(int userId, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Include(u => u.UserDocuments)
+            .ThenInclude(ud => ud.Document)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
     }
 
     public async Task<User?> AuthenticateAsync(string usernameOrEmail, string password, CancellationToken ct = default)
@@ -70,6 +87,35 @@ public class UserService : BaseService<User>, IUserService
             return false;
         }
 
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            throw new ArgumentException("New password is required.", nameof(newPassword));
+        }
+
+        user.Password = HashPassword(newPassword);
+        _dbSet.Update(user);
+        await _context.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken ct = default)
+    {
+        var user = await _dbSet.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user == null)
+        {
+            return false;
+        }
+
+        if (!VerifyPassword(currentPassword, user.Password))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            throw new ArgumentException("New password is required.", nameof(newPassword));
+        }
+
         user.Password = HashPassword(newPassword);
         _dbSet.Update(user);
         await _context.SaveChangesAsync(ct);
@@ -80,7 +126,13 @@ public class UserService : BaseService<User>, IUserService
     {
         if (string.IsNullOrWhiteSpace(entity.Password))
         {
-            throw new ArgumentException("Password is required.");
+            throw new ArgumentException("Password is required.", nameof(entity));
+        }
+
+        var validationResult = await _validator.ValidateAsync(entity, ct);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
         }
 
         entity.Password = HashPassword(entity.Password);
