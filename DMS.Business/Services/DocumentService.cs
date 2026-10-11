@@ -12,10 +12,19 @@ public class DocumentService : BaseService<Document>, IDocumentService
     {
     }
 
-    public async Task<IReadOnlyList<Document>> GetByUserAsync(int userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Document>> GetByUserAsync(Guid userId, CancellationToken ct = default)
     {
         return await _context.UserDocuments
-            .Where(ud => ud.UserId == userId)
+            .Where(ud => ud.User.EntityId == userId)
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Document>> GetByUserAsync(Guid userId, Permission permission, CancellationToken ct = default)
+    {
+        return await _context.UserDocuments
+            .Where(ud => ud.User.EntityId == userId && ud.Permission == permission)
             .Select(ud => ud.Document)
             .AsNoTracking()
             .ToListAsync(ct);
@@ -30,27 +39,27 @@ public class DocumentService : BaseService<Document>, IDocumentService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Document>> SearchByNameAsync(int userId, string searchTerm, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Document>> SearchByNameAsync(Guid userId, string searchTerm, CancellationToken ct = default)
     {
         return await _context.UserDocuments
-            .Where(ud => ud.UserId == userId && EF.Functions.ILike(ud.Document.Name, $"%{searchTerm}%"))
+            .Where(ud => ud.User.EntityId == userId && EF.Functions.ILike(ud.Document.Name, $"%{searchTerm}%"))
             .Select(ud => ud.Document)
             .AsNoTracking()
             .ToListAsync(ct);
     }
 
-    public async Task<Document?> GetWithUsersAsync(int documentId, CancellationToken ct = default)
+    public async Task<Document?> GetWithUsersAsync(Guid documentId, CancellationToken ct = default)
     {
         return await _dbSet
             .Include(d => d.UserDocuments)
             .ThenInclude(ud => ud.User)
-            .FirstOrDefaultAsync(d => d.Id == documentId, ct);
+            .FirstOrDefaultAsync(d => d.EntityId == documentId, ct);
     }
 
-    public async Task<Document> AddForOwnerAsync(int ownerUserId, Document document, CancellationToken ct = default)
+    public async Task<Document> AddForOwnerAsync(Guid ownerUserId, Document document, CancellationToken ct = default)
     {
-        var userExists = await _context.Users.AnyAsync(u => u.Id == ownerUserId, ct);
-        if (!userExists)
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.EntityId == ownerUserId, ct);
+        if (user == null)
         {
             throw new ArgumentException($"User with ID {ownerUserId} not found.", nameof(ownerUserId));
         }
@@ -60,8 +69,10 @@ public class DocumentService : BaseService<Document>, IDocumentService
 
         var userDocument = new UserDocument
         {
-            UserId = ownerUserId,
+            UserId = user.Id,
+            User = user,
             DocumentId = document.Id,
+            Document = document,
             Permission = Permission.Owner
         };
 
@@ -71,15 +82,15 @@ public class DocumentService : BaseService<Document>, IDocumentService
         return document;
     }
 
-    public async Task<bool> HasAccessAsync(int userId, int documentId, CancellationToken ct = default)
+    public async Task<bool> HasAccessAsync(Guid userId, Guid documentId, CancellationToken ct = default)
     {
         return await _context.UserDocuments
-            .AnyAsync(ud => ud.UserId == userId && ud.DocumentId == documentId, ct);
+            .AnyAsync(ud => ud.User.EntityId == userId && ud.Document.EntityId == documentId, ct);
     }
 
-    public async Task<bool> HasPermissionAsync(int userId, int documentId, Permission permission, CancellationToken ct = default)
+    public async Task<bool> HasPermissionAsync(Guid userId, Guid documentId, Permission permission, CancellationToken ct = default)
     {
         return await _context.UserDocuments
-            .AnyAsync(ud => ud.UserId == userId && ud.DocumentId == documentId && ud.Permission == permission, ct);
+            .AnyAsync(ud => ud.User.EntityId == userId && ud.Document.EntityId == documentId && ud.Permission == permission, ct);
     }
 }

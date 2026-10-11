@@ -33,12 +33,12 @@ public class UserService : BaseService<User>, IUserService
         return await _dbSet.AnyAsync(u => u.Email == email, ct);
     }
 
-    public async Task<User?> GetWithDocumentsAsync(int userId, CancellationToken ct = default)
+    public async Task<User?> GetWithDocumentsAsync(Guid userId, CancellationToken ct = default)
     {
         return await _dbSet
             .Include(u => u.UserDocuments)
             .ThenInclude(ud => ud.Document)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+            .FirstOrDefaultAsync(u => u.EntityId == userId, ct);
     }
 
     public async Task<User?> AuthenticateAsync(string usernameOrEmail, string password, CancellationToken ct = default)
@@ -57,9 +57,9 @@ public class UserService : BaseService<User>, IUserService
         return null;
     }
 
-    public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken ct = default)
+    public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct = default)
     {
-        var user = await _dbSet.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        var user = await _dbSet.FirstOrDefaultAsync(u => u.EntityId == userId, ct);
         if (user == null)
         {
             return false;

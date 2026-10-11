@@ -42,8 +42,25 @@ public class UserController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = resultDto.Id }, resultDto);
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<UserDto>> GetById(int id)
+    [HttpPost("login")]
+    public async Task<ActionResult<UserDto>> PostLogin([FromBody] LoginDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.UsernameOrEmail) || string.IsNullOrWhiteSpace(dto.Password))
+        {
+            return BadRequest("Username/Email and Password are required.");
+        }
+
+        User? user = await _userService.AuthenticateAsync(dto.UsernameOrEmail, dto.Password);
+        if (user == null)
+        {
+            return Unauthorized("Invalid username/email or password.");
+        }
+
+        return Ok(user.Adapt<UserDto>());
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<UserDto>> GetById(Guid id)
     {
         User? user = await _userService.GetByIdAsync(id);
         if (user == null)

@@ -31,17 +31,18 @@ public class DocumentControllerTests
     public async Task GetById_ExistingId_ReturnsOkWithDocument()
     {
         // Arrange
-        var document = new Document { Id = 1, Name = "invoice.pdf", Type = "application/pdf", Size = 100 };
-        _mockService.Setup(s => s.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(document);
+        var docGuid = Guid.NewGuid();
+        var document = new Document { Id = 1, EntityId = docGuid, Name = "invoice.pdf", Type = "application/pdf", Size = 100 };
+        _mockService.Setup(s => s.GetByIdAsync(docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(document);
 
         // Act
-        var result = await _controller.GetById(1);
+        var result = await _controller.GetById(docGuid);
 
         // Assert
         var ok = result.Result as OkObjectResult;
         Assert.That(ok, Is.Not.Null);
         var dto = ok!.Value as DocumentDto;
-        Assert.That(dto!.Id, Is.EqualTo(1));
+        Assert.That(dto!.Id, Is.EqualTo(docGuid));
         Assert.That(dto.Name, Is.EqualTo("invoice.pdf"));
     }
 
@@ -49,10 +50,11 @@ public class DocumentControllerTests
     public async Task GetById_UnknownId_ReturnsNotFound()
     {
         // Arrange
-        _mockService.Setup(s => s.GetByIdAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync((Document?)null);
+        var unknownGuid = Guid.NewGuid();
+        _mockService.Setup(s => s.GetByIdAsync(unknownGuid, It.IsAny<CancellationToken>())).ReturnsAsync((Document?)null);
 
         // Act
-        var result = await _controller.GetById(99);
+        var result = await _controller.GetById(unknownGuid);
 
         // Assert
         Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
@@ -62,7 +64,8 @@ public class DocumentControllerTests
     public async Task Upload_NoFiles_ReturnsBadRequest()
     {
         // Act
-        var result = await _controller.UploadMultipleFiles(new List<IFormFile>(), 1);
+        var userGuid = Guid.NewGuid();
+        var result = await _controller.UploadMultipleFiles(new List<IFormFile>(), userGuid);
 
         // Assert
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -72,33 +75,37 @@ public class DocumentControllerTests
     public async Task Upload_ValidFile_SavesDocumentForOwner()
     {
         // Arrange
+        var userGuid = Guid.NewGuid();
+        var docGuid = Guid.NewGuid();
         var file = new Mock<IFormFile>();
         file.Setup(f => f.FileName).Returns("invoice.pdf");
         file.Setup(f => f.Length).Returns(100);
         file.Setup(f => f.ContentType).Returns("application/pdf");
-        _mockService.Setup(s => s.AddForOwnerAsync(1, It.IsAny<Document>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((int _, Document d, CancellationToken _) => d);
+        _mockService.Setup(s => s.AddForOwnerAsync(userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((Guid _, Document d, CancellationToken _) => { d.EntityId = docGuid; return d; });
 
         // Act
-        var result = await _controller.UploadMultipleFiles(new List<IFormFile> { file.Object }, 1);
+        var result = await _controller.UploadMultipleFiles(new List<IFormFile> { file.Object }, userGuid);
 
         // Assert
         var ok = result.Result as OkObjectResult;
         var dtos = ok!.Value as List<DocumentDto>;
         Assert.That(dtos, Has.Count.EqualTo(1));
-        Assert.That(dtos![0].Name, Is.EqualTo("invoice"));
+        Assert.That(dtos![0].Id, Is.EqualTo(docGuid));
+        Assert.That(dtos[0].Name, Is.EqualTo("invoice"));
         Assert.That(dtos[0].Type, Is.EqualTo("pdf"));
-        _mockService.Verify(s => s.AddForOwnerAsync(1, It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockService.Verify(s => s.AddForOwnerAsync(userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
     public async Task Delete_UnknownId_ReturnsNotFound()
     {
         // Arrange
-        _mockService.Setup(s => s.RemoveByIdAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var unknownGuid = Guid.NewGuid();
+        _mockService.Setup(s => s.RemoveByIdAsync(unknownGuid, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         // Act
-        var result = await _controller.Delete(99);
+        var result = await _controller.Delete(unknownGuid);
 
         // Assert
         Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());

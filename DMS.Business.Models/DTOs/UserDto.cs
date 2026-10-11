@@ -1,7 +1,7 @@
 namespace DMS.DAL.DTOs;
 
 public record UserDto(
-    int Id,
+    Guid Id,
     string? Username,
     string? Email,
     DateTime CreatedAt

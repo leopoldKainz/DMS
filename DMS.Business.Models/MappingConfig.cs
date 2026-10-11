@@ -7,25 +7,26 @@ public class MappingConfig : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        // User -> UserDto: Password und Navigationslisten ignorieren
-        config.NewConfig<User, UserDto>();
+        config.NewConfig<User, UserDto>()
+            .Map(dest => dest.Id, src => src.EntityId);
 
-        // CreateUserDto -> User
         config.NewConfig<CreateUserDto, User>()
             .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.EntityId)
             .Ignore(dest => dest.CreatedAt)
             .Ignore(dest => dest.UpdatedOn);
 
-        // Document -> DocumentDto
-        config.NewConfig<Document, DocumentDto>();
+        config.NewConfig<Document, DocumentDto>()
+            .Map(dest => dest.Id, src => src.EntityId);
 
-        // UserDocument -> UserDocumentDto: Flattening für verknüpfte Entitäten
         config.NewConfig<UserDocument, UserDocumentDto>()
+            .Map(dest => dest.UserId, src => src.User != null ? src.User.EntityId : Guid.Empty)
             .Map(dest => dest.Username, src => src.User != null ? src.User.Username : null)
+            .Map(dest => dest.DocumentId, src => src.Document != null ? src.Document.EntityId : Guid.Empty)
             .Map(dest => dest.DocumentName, src => src.Document != null ? src.Document.Name : null)
             .Map(dest => dest.Permission, src => src.Permission.ToString());
 
-        // ShareRequest -> ShareRequestDto
-        config.NewConfig<ShareRequest, ShareRequestDto>();
+        config.NewConfig<ShareRequest, ShareRequestDto>()
+            .Map(dest => dest.Id, src => src.EntityId);
     }
 }

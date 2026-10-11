@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DMS.Business\DMS.Business.csproj" />
+    <ProjectReference Include="..\DMS.Business.Models\DMS.Business.Models.csproj" />
   </ItemGroup>
 
 </Project>

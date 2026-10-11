@@ -1,9 +1,9 @@
 namespace DMS.DAL.DTOs;
 
 public record UserDocumentDto(
-    int UserId,
+    Guid UserId,
     string? Username,
-    int DocumentId,
+    Guid DocumentId,
     string DocumentName,
     string Permission,
     DateTime CreatedAt

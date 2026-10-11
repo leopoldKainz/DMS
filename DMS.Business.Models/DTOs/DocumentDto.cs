@@ -1,7 +1,7 @@
 namespace DMS.DAL.DTOs;
 
 public record DocumentDto(
-    int Id,
+    Guid Id,
     string Name,
     string Type,
     long Size,

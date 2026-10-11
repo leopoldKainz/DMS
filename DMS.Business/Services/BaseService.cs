@@ -16,9 +16,9 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
         _dbSet = context.Set<T>();
     }
 
-    public virtual async Task<T?> GetByIdAsync(int id, CancellationToken ct = default)
+    public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(e => e.Id == id, ct);
+        return await _dbSet.FirstOrDefaultAsync(e => e.EntityId == id, ct);
     }
 
     public virtual async Task<T?> GetByEntityIdAsync(Guid entityId, CancellationToken ct = default)
@@ -31,9 +31,9 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
         return await _dbSet.AsNoTracking().ToListAsync(ct);
     }
 
-    public virtual async Task<bool> ExistsAsync(int id, CancellationToken ct = default)
+    public virtual async Task<bool> ExistsAsync(Guid id, CancellationToken ct = default)
     {
-        return await _dbSet.AnyAsync(e => e.Id == id, ct);
+        return await _dbSet.AnyAsync(e => e.EntityId == id, ct);
     }
 
     public virtual async Task<T> AddAsync(T entity, CancellationToken ct = default)
@@ -55,9 +55,9 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
         _context.SaveChanges();
     }
 
-    public virtual async Task<bool> RemoveByIdAsync(int id, CancellationToken ct = default)
+    public virtual async Task<bool> RemoveByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await _dbSet.FirstOrDefaultAsync(e => e.Id == id, ct);
+        var entity = await _dbSet.FirstOrDefaultAsync(e => e.EntityId == id, ct);
         if (entity == null)
         {
             return false;

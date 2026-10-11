@@ -87,12 +87,13 @@ public class UserServiceTests
     public async Task ChangePasswordAsync_CorrectCurrentPassword_UpdatesPassword()
     {
         // Arrange
-        var user = new User { Id = 1, Username = "max", Password = UserService.HashPassword("old") };
+        var userGuid = Guid.NewGuid();
+        var user = new User { Id = 1, EntityId = userGuid, Username = "max", Password = UserService.HashPassword("old") };
         SetupUsers(user);
         var service = new UserService(_mockContext.Object);
 
         // Act
-        var result = await service.ChangePasswordAsync(1, "old", "new");
+        var result = await service.ChangePasswordAsync(userGuid, "old", "new");
 
         // Assert
         Assert.That(result, Is.True);

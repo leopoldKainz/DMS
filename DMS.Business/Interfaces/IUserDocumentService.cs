@@ -7,12 +7,12 @@ namespace DMS.Business.Interfaces;
 // and no BaseEntity.Id, so it cannot use IBaseService<T>.
 public interface IUserDocumentService
 {
-    Task<UserDocument?> GetAsync(int userId, int documentId, CancellationToken ct = default);
-    Task<IReadOnlyList<UserDocument>> GetByUserAsync(int userId, CancellationToken ct = default);
-    Task<IReadOnlyList<UserDocument>> GetByDocumentAsync(int documentId, CancellationToken ct = default);
-    Task<bool> ExistsAsync(int userId, int documentId, CancellationToken ct = default);
-    Task<bool> HasPermissionAsync(int userId, int documentId, Permission permission, CancellationToken ct = default);
-    Task<UserDocument> GrantAsync(int userId, int documentId, Permission permission, CancellationToken ct = default);
-    Task<bool> UpdatePermissionAsync(int userId, int documentId, Permission permission, CancellationToken ct = default);
-    Task<bool> RevokeAsync(int userId, int documentId, CancellationToken ct = default);
+    Task<UserDocument?> GetAsync(Guid userId, Guid documentId, CancellationToken ct = default);
+    Task<IReadOnlyList<UserDocument>> GetByUserAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<UserDocument>> GetByDocumentAsync(Guid documentId, CancellationToken ct = default);
+    Task<bool> ExistsAsync(Guid userId, Guid documentId, CancellationToken ct = default);
+    Task<bool> HasPermissionAsync(Guid userId, Guid documentId, Permission permission, CancellationToken ct = default);
+    Task<UserDocument> GrantAsync(Guid userId, Guid documentId, Permission permission, CancellationToken ct = default);
+    Task<bool> UpdatePermissionAsync(Guid userId, Guid documentId, Permission permission, CancellationToken ct = default);
+    Task<bool> RevokeAsync(Guid userId, Guid documentId, CancellationToken ct = default);
 }

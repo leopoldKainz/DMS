@@ -30,9 +30,10 @@ public class UserControllerTests
     public async Task Register_ValidUser_ReturnsCreated()
     {
         // Arrange
+        var userGuid = Guid.NewGuid();
         var dto = new CreateUserDto("max", "max@test.at", "secret");
         _mockService.Setup(s => s.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((User u, CancellationToken _) => { u.Id = 1; return u; });
+                    .ReturnsAsync((User u, CancellationToken _) => { u.EntityId = userGuid; return u; });
 
         // Act
         var result = await _controller.PostRegister(dto);
@@ -41,7 +42,7 @@ public class UserControllerTests
         var created = result.Result as CreatedAtActionResult;
         Assert.That(created, Is.Not.Null);
         var userDto = created!.Value as UserDto;
-        Assert.That(userDto!.Id, Is.EqualTo(1));
+        Assert.That(userDto!.Id, Is.EqualTo(userGuid));
         Assert.That(userDto.Username, Is.EqualTo("max"));
     }
 
@@ -64,26 +65,29 @@ public class UserControllerTests
     public async Task GetById_ExistingId_ReturnsOkWithUser()
     {
         // Arrange
-        var user = new User { Id = 1, Username = "max", Email = "max@test.at" };
-        _mockService.Setup(s => s.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        var userGuid = Guid.NewGuid();
+        var user = new User { Id = 1, EntityId = userGuid, Username = "max", Email = "max@test.at" };
+        _mockService.Setup(s => s.GetByIdAsync(userGuid, It.IsAny<CancellationToken>())).ReturnsAsync(user);
 
         // Act
-        var result = await _controller.GetById(1);
+        var result = await _controller.GetById(userGuid);
 
         // Assert
         var ok = result.Result as OkObjectResult;
         var dto = ok!.Value as UserDto;
-        Assert.That(dto!.Username, Is.EqualTo("max"));
+        Assert.That(dto!.Id, Is.EqualTo(userGuid));
+        Assert.That(dto.Username, Is.EqualTo("max"));
     }
 
     [Test]
     public async Task GetById_UnknownId_ReturnsNotFound()
     {
         // Arrange
-        _mockService.Setup(s => s.GetByIdAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        var unknownGuid = Guid.NewGuid();
+        _mockService.Setup(s => s.GetByIdAsync(unknownGuid, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
         // Act
-        var result = await _controller.GetById(99);
+        var result = await _controller.GetById(unknownGuid);
 
         // Assert
         Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
