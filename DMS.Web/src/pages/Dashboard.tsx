@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router'
 import {
   deleteDocument,
   listDocuments,
   searchDocuments,
   type DocumentDto,
 } from '../api/documents'
-import type { ShellContext } from '../components/AppShell'
 import DocumentsTable, { type Sort, type SortKey } from '../components/DocumentsTable'
 import UploadField from '../components/UploadField'
 import { formatSize } from '../lib/format'
@@ -21,8 +19,6 @@ function compare(a: DocumentDto, b: DocumentDto, sort: Sort): number {
 }
 
 export default function Dashboard() {
-  const { userId } = useOutletContext<ShellContext>()
-
   const [documents, setDocuments] = useState<DocumentDto[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [term, setTerm] = useState('')
@@ -38,7 +34,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     let cancelled = false
-    const pending = debounced ? searchDocuments(debounced, userId) : listDocuments(userId)
+    const pending = debounced ? searchDocuments(debounced) : listDocuments()
 
     pending
       .then((docs) => {
@@ -55,7 +51,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [debounced, userId, reloads])
+  }, [debounced, reloads])
 
   const types = useMemo(() => {
     if (!documents) return []
@@ -129,7 +125,7 @@ export default function Dashboard() {
             className="mt-1 block w-full border-b border-rule bg-transparent pb-1.5 text-[15px] text-ink placeholder:text-quiet/60 focus:border-stamp focus:outline-none"
           />
         </label>
-        <UploadField userId={userId} onUploaded={reload} />
+        <UploadField onUploaded={reload} />
       </div>
 
       {types.length > 1 ? (

@@ -1,12 +1,15 @@
+using DMS.API.Auth;
 using DMS.Business.Interfaces;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DMS.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("[controller]")]
 public class DocumentController : ControllerBase
 {
@@ -20,14 +23,14 @@ public class DocumentController : ControllerBase
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<List<DocumentDto>>> UploadMultipleFiles(
-        List<IFormFile> files,
-        [FromQuery] Guid userId)
+        List<IFormFile> files)
     {
         if (files == null || files.Count == 0)
         {
             return BadRequest("No files were uploaded.");
         }
 
+        Guid userId = User.GetUserId();
         var createdDocuments = new List<DocumentDto>();
 
         foreach (var file in files)
@@ -54,18 +57,9 @@ public class DocumentController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DocumentDto>>> GetAll([FromQuery] Guid? userId = null)
+    public async Task<ActionResult<List<DocumentDto>>> GetAll()
     {
-        IReadOnlyList<Document> documents;
-        if (userId.HasValue)
-        {
-            documents = await _documentService.GetByUserAsync(userId.Value);
-        }
-        else
-        {
-            documents = await _documentService.GetAllAsync();
-        }
-
+        IReadOnlyList<Document> documents = await _documentService.GetByUserAsync(User.GetUserId());
         return Ok(documents.Adapt<List<DocumentDto>>());
     }
 
@@ -82,24 +76,14 @@ public class DocumentController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<ActionResult<List<DocumentDto>>> Search([FromQuery] string query, [FromQuery] Guid? userId = null)
+    public async Task<ActionResult<List<DocumentDto>>> Search([FromQuery] string query)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            return await GetAll(userId);
+            return await GetAll();
         }
 
-        IReadOnlyList<Document> documents;
-        if (userId.HasValue)
-        {
-            documents = await _documentService.SearchByNameAsync(userId.Value, query);
-        }
-        else
-        {
-            var allDocs = await _documentService.GetAllAsync();
-            documents = allDocs.Where(d => d.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-
+        IReadOnlyList<Document> documents = await _documentService.SearchByNameAsync(User.GetUserId(), query);
         return Ok(documents.Adapt<List<DocumentDto>>());
     }
 

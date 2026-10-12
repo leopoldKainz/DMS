@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using DMS.API.Controllers;
 using DMS.Business.Interfaces;
 using DMS.DAL.DTOs;
@@ -5,6 +6,7 @@ using DMS.DAL.Entities;
 using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Moq;
 
 namespace DMS.API.Test;
@@ -13,6 +15,7 @@ public class DocumentControllerTests
 {
     private Mock<IDocumentService> _mockService = null!;
     private DocumentController _controller = null!;
+    private Guid _userGuid;
 
     [OneTimeSetUp]
     public void RegisterMappings()
@@ -24,7 +27,18 @@ public class DocumentControllerTests
     public void Setup()
     {
         _mockService = new Mock<IDocumentService>();
-        _controller = new DocumentController(_mockService.Object);
+        _userGuid = Guid.NewGuid();
+        _controller = new DocumentController(_mockService.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(JwtRegisteredClaimNames.Sub, _userGuid.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     // --- GetById ---
@@ -68,17 +82,16 @@ public class DocumentControllerTests
     public async Task Upload_ValidFile_SavesDocumentForOwner()
     {
         // Arrange
-        var userGuid = Guid.NewGuid();
         var docGuid = Guid.NewGuid();
         var file = new Mock<IFormFile>();
         file.Setup(f => f.FileName).Returns("invoice.pdf");
         file.Setup(f => f.Length).Returns(100);
         file.Setup(f => f.ContentType).Returns("application/pdf");
-        _mockService.Setup(s => s.AddForOwnerAsync(userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.AddForOwnerAsync(_userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync((Guid _, Document d, CancellationToken _) => { d.EntityId = docGuid; return d; });
 
         // Act
-        var result = await _controller.UploadMultipleFiles(new List<IFormFile> { file.Object }, userGuid);
+        var result = await _controller.UploadMultipleFiles(new List<IFormFile> { file.Object });
 
         // Assert
         var ok = result.Result as OkObjectResult;
@@ -87,15 +100,14 @@ public class DocumentControllerTests
         Assert.That(dtos![0].Id, Is.EqualTo(docGuid));
         Assert.That(dtos[0].Name, Is.EqualTo("invoice"));
         Assert.That(dtos[0].Type, Is.EqualTo("pdf"));
-        _mockService.Verify(s => s.AddForOwnerAsync(userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockService.Verify(s => s.AddForOwnerAsync(_userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
     public async Task Upload_NoFiles_ReturnsBadRequest()
     {
         // Act
-        var userGuid = Guid.NewGuid();
-        var result = await _controller.UploadMultipleFiles(new List<IFormFile>(), userGuid);
+        var result = await _controller.UploadMultipleFiles(new List<IFormFile>());
 
         // Assert
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
@@ -104,19 +116,18 @@ public class DocumentControllerTests
     // --- GetAll ---
 
     [Test]
-    public async Task GetAll_WithUserId_ReturnsOkWithUserDocuments()
+    public async Task GetAll_ReturnsOkWithDocumentsOfCurrentUser()
     {
         // Arrange
-        var userGuid = Guid.NewGuid();
         var docGuid = Guid.NewGuid();
         var docs = new List<Document>
         {
             new() { Id = 1, EntityId = docGuid, Name = "contract.pdf", Type = "application/pdf", Size = 200 }
         };
-        _mockService.Setup(s => s.GetByUserAsync(userGuid, It.IsAny<CancellationToken>())).ReturnsAsync(docs);
+        _mockService.Setup(s => s.GetByUserAsync(_userGuid, It.IsAny<CancellationToken>())).ReturnsAsync(docs);
 
         // Act
-        var result = await _controller.GetAll(userGuid);
+        var result = await _controller.GetAll();
 
         // Assert
         var ok = result.Result as OkObjectResult;
@@ -126,42 +137,20 @@ public class DocumentControllerTests
         Assert.That(dtos![0].Id, Is.EqualTo(docGuid));
     }
 
-    [Test]
-    public async Task GetAll_WithoutUserId_ReturnsAllDocuments()
-    {
-        // Arrange
-        var docs = new List<Document>
-        {
-            new() { Id = 1, EntityId = Guid.NewGuid(), Name = "doc1.pdf", Type = "application/pdf", Size = 50 },
-            new() { Id = 2, EntityId = Guid.NewGuid(), Name = "doc2.pdf", Type = "application/pdf", Size = 80 }
-        };
-        _mockService.Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(docs);
-
-        // Act
-        var result = await _controller.GetAll(null);
-
-        // Assert
-        var ok = result.Result as OkObjectResult;
-        Assert.That(ok, Is.Not.Null);
-        var dtos = ok!.Value as List<DocumentDto>;
-        Assert.That(dtos, Has.Count.EqualTo(2));
-    }
-
     // --- Search ---
 
     [Test]
     public async Task Search_MatchingTerm_ReturnsOkWithDocuments()
     {
         // Arrange
-        var userGuid = Guid.NewGuid();
         var docs = new List<Document>
         {
             new() { Id = 1, EntityId = Guid.NewGuid(), Name = "matching_doc.pdf", Type = "application/pdf", Size = 120 }
         };
-        _mockService.Setup(s => s.SearchByNameAsync(userGuid, "matching", It.IsAny<CancellationToken>())).ReturnsAsync(docs);
+        _mockService.Setup(s => s.SearchByNameAsync(_userGuid, "matching", It.IsAny<CancellationToken>())).ReturnsAsync(docs);
 
         // Act
-        var result = await _controller.Search("matching", userGuid);
+        var result = await _controller.Search("matching");
 
         // Assert
         var ok = result.Result as OkObjectResult;
@@ -174,12 +163,11 @@ public class DocumentControllerTests
     public async Task Search_NonMatchingTerm_ReturnsOkWithEmptyList()
     {
         // Arrange
-        var userGuid = Guid.NewGuid();
-        _mockService.Setup(s => s.SearchByNameAsync(userGuid, "nonexistent", It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.SearchByNameAsync(_userGuid, "nonexistent", It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new List<Document>());
 
         // Act
-        var result = await _controller.Search("nonexistent", userGuid);
+        var result = await _controller.Search("nonexistent");
 
         // Assert
         var ok = result.Result as OkObjectResult;
@@ -192,37 +180,15 @@ public class DocumentControllerTests
     public async Task Search_EmptyQuery_DelegatesToGetAll()
     {
         // Arrange
-        var userGuid = Guid.NewGuid();
-        _mockService.Setup(s => s.GetByUserAsync(userGuid, It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.GetByUserAsync(_userGuid, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new List<Document>());
 
         // Act
-        var result = await _controller.Search("", userGuid);
+        var result = await _controller.Search("");
 
         // Assert
         var ok = result.Result as OkObjectResult;
         Assert.That(ok, Is.Not.Null);
-    }
-
-    [Test]
-    public async Task Search_WithoutUserId_FiltersAllDocuments()
-    {
-        // Arrange
-        var docs = new List<Document>
-        {
-            new() { Id = 1, EntityId = Guid.NewGuid(), Name = "Invoice_2026.pdf", Type = "application/pdf", Size = 100 },
-            new() { Id = 2, EntityId = Guid.NewGuid(), Name = "Contract.pdf", Type = "application/pdf", Size = 100 }
-        };
-        _mockService.Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(docs);
-
-        // Act
-        var result = await _controller.Search("invoice", null);
-
-        // Assert
-        var ok = result.Result as OkObjectResult;
-        Assert.That(ok, Is.Not.Null);
-        var dtos = ok!.Value as List<DocumentDto>;
-        Assert.That(dtos, Has.Count.EqualTo(1));
     }
 
     // --- Delete ---

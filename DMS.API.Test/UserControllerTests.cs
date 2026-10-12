@@ -1,3 +1,4 @@
+using DMS.API.Auth;
 using DMS.API.Controllers;
 using DMS.Business.Interfaces;
 using DMS.DAL.DTOs;
@@ -11,6 +12,7 @@ namespace DMS.API.Test;
 public class UserControllerTests
 {
     private Mock<IUserService> _mockService = null!;
+    private Mock<ITokenService> _mockTokenService = null!;
     private UserController _controller = null!;
 
     [OneTimeSetUp]
@@ -23,7 +25,8 @@ public class UserControllerTests
     public void Setup()
     {
         _mockService = new Mock<IUserService>();
-        _controller = new UserController(_mockService.Object);
+        _mockTokenService = new Mock<ITokenService>();
+        _controller = new UserController(_mockService.Object, _mockTokenService.Object);
     }
     
     [Test]
@@ -79,13 +82,15 @@ public class UserControllerTests
     }
     
     [Test]
-    public async Task Login_ValidCredentials_ReturnsOkWithUser()
+    public async Task Login_ValidCredentials_ReturnsOkWithTokenAndUser()
     {
         // Arrange
         var userGuid = Guid.NewGuid();
         var user = new User { Id = 1, EntityId = userGuid, Username = "max", Email = "max@test.at" };
         var dto = new LoginDto("max", "secret");
+        var expiresAt = DateTime.UtcNow.AddHours(1);
         _mockService.Setup(s => s.AuthenticateAsync("max", "secret", It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _mockTokenService.Setup(t => t.CreateToken(user)).Returns(("jwt-token", expiresAt));
 
         // Act
         var result = await _controller.PostLogin(dto);
@@ -93,9 +98,11 @@ public class UserControllerTests
         // Assert
         var ok = result.Result as OkObjectResult;
         Assert.That(ok, Is.Not.Null);
-        var userDto = ok!.Value as UserDto;
-        Assert.That(userDto!.Id, Is.EqualTo(userGuid));
-        Assert.That(userDto.Username, Is.EqualTo("max"));
+        var response = ok!.Value as LoginResponseDto;
+        Assert.That(response!.Token, Is.EqualTo("jwt-token"));
+        Assert.That(response.ExpiresAt, Is.EqualTo(expiresAt));
+        Assert.That(response.User.Id, Is.EqualTo(userGuid));
+        Assert.That(response.User.Username, Is.EqualTo("max"));
     }
 
     [Test]

@@ -4,11 +4,10 @@ import { uploadDocuments } from '../api/documents'
 const MAX_BYTES = 50 * 1024 * 1024
 
 interface Props {
-  userId: number | undefined
   onUploaded: () => void
 }
 
-export default function UploadField({ userId, onUploaded }: Props) {
+export default function UploadField({ onUploaded }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -23,7 +22,6 @@ export default function UploadField({ userId, onUploaded }: Props) {
   }
 
   function submit(fileList: FileList | null) {
-    if (userId === undefined) return
     const files = Array.from(fileList ?? [])
     const problem = validate(files)
     if (problem) {
@@ -33,7 +31,7 @@ export default function UploadField({ userId, onUploaded }: Props) {
 
     setBusy(true)
     setMessage(null)
-    uploadDocuments(files, userId)
+    uploadDocuments(files)
       .then((created) => {
         setMessage(
           created.length === 1
@@ -47,12 +45,6 @@ export default function UploadField({ userId, onUploaded }: Props) {
         setBusy(false)
         if (input.current) input.current.value = ''
       })
-  }
-
-  if (userId === undefined) {
-    return (
-      <p className="text-[13px] text-quiet">Wähle oben einen Benutzer, um Dateien hochzuladen.</p>
-    )
   }
 
   return (
