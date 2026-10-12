@@ -1,9 +1,9 @@
 namespace DMS.DAL.DTOs;
 
 public record ShareRequestDto(
-    int Id,
-    UserDto Owner,
-    UserDto Reciever,
-    DocumentDto Document,
+    Guid Id,
+    Guid OwnerId,
+    Guid RecieverId,
+    Guid DocumentId,
     DateTime CreatedAt
 );

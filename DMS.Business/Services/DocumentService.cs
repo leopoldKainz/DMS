@@ -1,21 +1,59 @@
 using DMS.Business.Interfaces;
+using DMS.Business.Models.Validation;
 using DMS.DAL;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace DMS.Business.Services;
 
 public class DocumentService : BaseService<Document>, IDocumentService
 {
-    public DocumentService(DmsDbContext context) : base(context)
+    private readonly IValidator<Document> _validator;
+
+    public DocumentService(DmsDbContext context) : this(context, new DocumentValidator())
     {
+    }
+
+    public DocumentService(DmsDbContext context, IValidator<Document> validator) : base(context)
+    {
+        _validator = validator;
+    }
+
+    public override async Task<Document> AddAsync(Document entity, CancellationToken ct = default)
+    {
+        var validationResult = await _validator.ValidateAsync(entity, ct);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+
+        return await base.AddAsync(entity, ct);
+    }
+
+    public async Task<IReadOnlyList<Document>> GetByUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await _context.UserDocuments
+            .Where(ud => ud.User.EntityId == userId)
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<Document>> GetByUserAsync(int userId, CancellationToken ct = default)
     {
         return await _context.UserDocuments
             .Where(ud => ud.UserId == userId)
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Document>> GetByUserAsync(Guid userId, Permission permission, CancellationToken ct = default)
+    {
+        return await _context.UserDocuments
+            .Where(ud => ud.User.EntityId == userId && ud.Permission == permission)
             .Select(ud => ud.Document)
             .AsNoTracking()
             .ToListAsync(ct);
@@ -30,6 +68,15 @@ public class DocumentService : BaseService<Document>, IDocumentService
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Document>> SearchByNameAsync(Guid userId, string searchTerm, CancellationToken ct = default)
+    {
+        return await _context.UserDocuments
+            .Where(ud => ud.User.EntityId == userId && EF.Functions.ILike(ud.Document.Name, $"%{searchTerm}%"))
+            .Select(ud => ud.Document)
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Document>> SearchByNameAsync(int userId, string searchTerm, CancellationToken ct = default)
     {
         return await _context.UserDocuments
@@ -37,6 +84,14 @@ public class DocumentService : BaseService<Document>, IDocumentService
             .Select(ud => ud.Document)
             .AsNoTracking()
             .ToListAsync(ct);
+    }
+
+    public async Task<Document?> GetWithUsersAsync(Guid documentId, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Include(d => d.UserDocuments)
+            .ThenInclude(ud => ud.User)
+            .FirstOrDefaultAsync(d => d.EntityId == documentId, ct);
     }
 
     public async Task<Document?> GetWithUsersAsync(int documentId, CancellationToken ct = default)
@@ -47,12 +102,18 @@ public class DocumentService : BaseService<Document>, IDocumentService
             .FirstOrDefaultAsync(d => d.Id == documentId, ct);
     }
 
-    public async Task<Document> AddForOwnerAsync(int ownerUserId, Document document, CancellationToken ct = default)
+    public async Task<Document> AddForOwnerAsync(Guid ownerUserId, Document document, CancellationToken ct = default)
     {
-        var userExists = await _context.Users.AnyAsync(u => u.Id == ownerUserId, ct);
-        if (!userExists)
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.EntityId == ownerUserId, ct);
+        if (user == null)
         {
             throw new ArgumentException($"User with ID {ownerUserId} not found.", nameof(ownerUserId));
+        }
+
+        var validationResult = await _validator.ValidateAsync(document, ct);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
         }
 
         await _dbSet.AddAsync(document, ct);
@@ -60,8 +121,10 @@ public class DocumentService : BaseService<Document>, IDocumentService
 
         var userDocument = new UserDocument
         {
-            UserId = ownerUserId,
+            UserId = user.Id,
+            User = user,
             DocumentId = document.Id,
+            Document = document,
             Permission = Permission.Owner
         };
 
@@ -71,10 +134,54 @@ public class DocumentService : BaseService<Document>, IDocumentService
         return document;
     }
 
+    public async Task<Document> AddForOwnerAsync(int ownerUserId, Document document, CancellationToken ct = default)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == ownerUserId, ct);
+        if (user == null)
+        {
+            throw new ArgumentException($"User with ID {ownerUserId} not found.", nameof(ownerUserId));
+        }
+
+        var validationResult = await _validator.ValidateAsync(document, ct);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+
+        await _dbSet.AddAsync(document, ct);
+        await _context.SaveChangesAsync(ct);
+
+        var userDocument = new UserDocument
+        {
+            UserId = user.Id,
+            User = user,
+            DocumentId = document.Id,
+            Document = document,
+            Permission = Permission.Owner
+        };
+
+        await _context.UserDocuments.AddAsync(userDocument, ct);
+        await _context.SaveChangesAsync(ct);
+
+        return document;
+    }
+
+    public async Task<bool> HasAccessAsync(Guid userId, Guid documentId, CancellationToken ct = default)
+    {
+        return await _context.UserDocuments
+            .AnyAsync(ud => ud.User.EntityId == userId && ud.Document.EntityId == documentId, ct);
+    }
+
     public async Task<bool> HasAccessAsync(int userId, int documentId, CancellationToken ct = default)
     {
         return await _context.UserDocuments
             .AnyAsync(ud => ud.UserId == userId && ud.DocumentId == documentId, ct);
+    }
+
+    public async Task<bool> HasPermissionAsync(Guid userId, Guid documentId, Permission permission, CancellationToken ct = default)
+    {
+        return await _context.UserDocuments
+            .AnyAsync(ud => ud.User.EntityId == userId && ud.Document.EntityId == documentId && ud.Permission == permission, ct);
     }
 
     public async Task<bool> HasPermissionAsync(int userId, int documentId, Permission permission, CancellationToken ct = default)

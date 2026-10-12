@@ -1,6 +1,7 @@
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.Entities;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using MockQueryable.Moq;
 using Moq;
@@ -55,6 +56,20 @@ public class UserServiceTests
     }
 
     [Test]
+    public void AddAsync_InvalidUserEntity_ThrowsValidationException()
+    {
+        // Arrange
+        SetupUsers();
+        var service = new UserService(_mockContext.Object);
+        // Faulty user entity: empty username, invalid email format
+        var user = new User { Username = "", Email = "not-an-email", Password = "secret" };
+
+        // Act + Assert
+        Assert.ThrowsAsync<ValidationException>(() => service.AddAsync(user));
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task AuthenticateAsync_CorrectPassword_ReturnsUser()
     {
         // Arrange
@@ -87,12 +102,13 @@ public class UserServiceTests
     public async Task ChangePasswordAsync_CorrectCurrentPassword_UpdatesPassword()
     {
         // Arrange
-        var user = new User { Id = 1, Username = "max", Password = UserService.HashPassword("old") };
+        var userGuid = Guid.NewGuid();
+        var user = new User { Id = 1, EntityId = userGuid, Username = "max", Password = UserService.HashPassword("old") };
         SetupUsers(user);
         var service = new UserService(_mockContext.Object);
 
         // Act
-        var result = await service.ChangePasswordAsync(1, "old", "new");
+        var result = await service.ChangePasswordAsync(userGuid, "old", "new");
 
         // Assert
         Assert.That(result, Is.True);

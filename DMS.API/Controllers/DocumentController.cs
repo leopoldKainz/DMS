@@ -21,7 +21,7 @@ public class DocumentController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<List<DocumentDto>>> UploadMultipleFiles(
         List<IFormFile> files,
-        [FromQuery] int userId)
+        [FromQuery] Guid userId)
     {
         if (files == null || files.Count == 0)
         {
@@ -54,7 +54,7 @@ public class DocumentController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DocumentDto>>> GetAll([FromQuery] int? userId = null)
+    public async Task<ActionResult<List<DocumentDto>>> GetAll([FromQuery] Guid? userId = null)
     {
         IReadOnlyList<Document> documents;
         if (userId.HasValue)
@@ -69,8 +69,8 @@ public class DocumentController : ControllerBase
         return Ok(documents.Adapt<List<DocumentDto>>());
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<DocumentDto>> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<DocumentDto>> GetById(Guid id)
     {
         var document = await _documentService.GetByIdAsync(id);
         if (document == null)
@@ -82,7 +82,7 @@ public class DocumentController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<ActionResult<List<DocumentDto>>> Search([FromQuery] string query, [FromQuery] int? userId = null)
+    public async Task<ActionResult<List<DocumentDto>>> Search([FromQuery] string query, [FromQuery] Guid? userId = null)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -103,8 +103,8 @@ public class DocumentController : ControllerBase
         return Ok(documents.Adapt<List<DocumentDto>>());
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<ActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult> Delete(Guid id)
     {
         var deleted = await _documentService.RemoveByIdAsync(id);
         if (!deleted)
