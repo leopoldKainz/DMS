@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Spectral:wght@400;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f1f2ee;
+  --color-ink: #22282b;
+  --color-quiet: #6e7570;
+  --color-rule: #d8dad3;
+  --color-stamp: #7b3fa0;
+
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+}
