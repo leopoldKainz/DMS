@@ -1,4 +1,42 @@
 const BASE = '/api'
+const SESSION_KEY = 'dms.session'
+
+export interface Session {
+  token: string
+  expiresAt: string
+  username: string | null
+}
+
+export function getSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const session = JSON.parse(raw) as Session
+    if (Date.parse(session.expiresAt) <= Date.now()) {
+      localStorage.removeItem(SESSION_KEY)
+      return null
+    }
+    return session
+  } catch {
+    return null
+  }
+}
+
+export function saveSession(session: Session) {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  } catch {
+    return
+  }
+}
+
+export function clearSession() {
+  try {
+    localStorage.removeItem(SESSION_KEY)
+  } catch {
+    return
+  }
+}
 
 export class ApiError extends Error {
   readonly status: number
@@ -34,7 +72,16 @@ async function readError(res: Response): Promise<string> {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, init)
+  const headers = new Headers(init?.headers)
+  const session = getSession()
+  if (session) headers.set('Authorization', `Bearer ${session.token}`)
+
+  const res = await fetch(BASE + path, { ...init, headers })
+
+  if (res.status === 401 && session) {
+    clearSession()
+    window.location.assign('/login')
+  }
   if (!res.ok) throw new ApiError(res.status, await readError(res))
   if (res.status === 204 || res.headers.get('content-length') === '0') {
     return undefined as T

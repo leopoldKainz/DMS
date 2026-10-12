@@ -1,22 +1,28 @@
+using DMS.API.Auth;
 using DMS.Business.Interfaces;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DMS.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("[controller]")]
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ITokenService _tokenService;
 
-    public UserController(IUserService userService)
+    public UserController(IUserService userService, ITokenService tokenService)
     {
         _userService = userService;
+        _tokenService = tokenService;
     }
 
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<ActionResult<UserDto>> PostRegister([FromBody] CreateUserDto dto)
     {
@@ -42,8 +48,9 @@ public class UserController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = resultDto.Id }, resultDto);
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<ActionResult<UserDto>> PostLogin([FromBody] LoginDto dto)
+    public async Task<ActionResult<LoginResponseDto>> PostLogin([FromBody] LoginDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.UsernameOrEmail) || string.IsNullOrWhiteSpace(dto.Password))
         {
@@ -56,7 +63,8 @@ public class UserController : ControllerBase
             return Unauthorized("Invalid username/email or password.");
         }
 
-        return Ok(user.Adapt<UserDto>());
+        var (token, expiresAt) = _tokenService.CreateToken(user);
+        return Ok(new LoginResponseDto(token, expiresAt, user.Adapt<UserDto>()));
     }
 
     [HttpGet("{id:guid}")]

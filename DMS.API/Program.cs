@@ -1,3 +1,5 @@
+using System.Text;
+using DMS.API.Auth;
 using DMS.API.Filters;
 using DMS.Business.Interfaces;
 using DMS.Business.Models.Validation;
@@ -9,6 +11,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 
 namespace DMS.API
 {
@@ -24,19 +27,30 @@ namespace DMS.API
                 options.UseNpgsql(connectionString);
             });
             
+            var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+            var jwtOptions = jwtSection.Get<JwtOptions>()
+                ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
+            builder.Services.Configure<JwtOptions>(jwtSection);
+            builder.Services.AddSingleton<ITokenService, TokenService>();
+
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = "";
-                    options.Audience = "";
+                    options.MapInboundClaims = false;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
+                        ValidIssuer = jwtOptions.Issuer,
                         ValidateAudience = true,
-                        ValidateLifetime = true
+                        ValidAudience = jwtOptions.Audience,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
+                        ClockSkew = TimeSpan.FromSeconds(30)
                     };
                 });
-            
+            builder.Services.AddAuthorization();
+
             builder.Services.AddMapster();
             TypeAdapterConfig.GlobalSettings.Scan(typeof(MappingConfig).Assembly);
             builder.Services.AddScoped<IDocumentService, DocumentService>();
@@ -48,12 +62,31 @@ namespace DMS.API
             {
                 options.Filters.Add<ValidationFilter>();
             });
-            builder.Services.AddOpenApi();
+            builder.Services.AddOpenApi(options =>
+            {
+                options.AddDocumentTransformer((document, _, _) =>
+                {
+                    document.Components ??= new OpenApiComponents();
+                    document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                    document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+                    {
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer",
+                        BearerFormat = "JWT",
+                        Description = "Token from POST /User/login"
+                    };
+                    document.Security =
+                    [
+                        new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }
+                    ];
+                    return Task.CompletedTask;
+                });
+            });
 
             var app = builder.Build();
             app.UseExceptionHandler();
 
-            // Configure the HTTP request pipeline.
+           
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
@@ -64,6 +97,7 @@ namespace DMS.API
                 });
             }
 
+            app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
 

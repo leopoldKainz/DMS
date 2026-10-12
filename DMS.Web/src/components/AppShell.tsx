@@ -1,46 +1,15 @@
-import { useEffect, useState } from 'react'
-import { Link, Outlet } from 'react-router'
-import { listUsers, type UserDto } from '../api/users'
-
-const STORAGE_KEY = 'dms.userId'
-
-export interface ShellContext {
-  userId: number | undefined
-  users: UserDto[]
-}
-
-function readStoredUserId(): number | undefined {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? Number(raw) : undefined
-  } catch {
-    return undefined
-  }
-}
-
-function storeUserId(id: number | undefined) {
-  try {
-    if (id === undefined) localStorage.removeItem(STORAGE_KEY)
-    else localStorage.setItem(STORAGE_KEY, String(id))
-  } catch {
-    return
-  }
-}
+import { Link, Navigate, Outlet, useNavigate } from 'react-router'
+import { clearSession, getSession } from '../api/http'
 
 export default function AppShell() {
-  const [users, setUsers] = useState<UserDto[]>([])
-  const [userId, setUserId] = useState<number | undefined>(readStoredUserId)
+  const navigate = useNavigate()
+  const session = getSession()
 
-  useEffect(() => {
-    listUsers()
-      .then(setUsers)
-      .catch(() => setUsers([]))
-  }, [])
+  if (!session) return <Navigate to="/login" replace />
 
-  function choose(value: string) {
-    const next = value === '' ? undefined : Number(value)
-    setUserId(next)
-    storeUserId(next)
+  function logout() {
+    clearSession()
+    navigate('/login', { replace: true })
   }
 
   return (
@@ -54,24 +23,19 @@ export default function AppShell() {
             Dokumentenverwaltung
           </Link>
           <span className="hidden h-px flex-1 bg-rule sm:block" />
-          <label className="flex items-center gap-2 text-[13px] text-quiet">
-            Benutzer
-            <select
-              value={userId ?? ''}
-              onChange={(e) => choose(e.target.value)}
-              className="border-b border-rule bg-transparent py-0.5 text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
+          <div className="flex items-center gap-4 text-[13px] text-quiet">
+            {session.username ? <span className="text-ink">{session.username}</span> : null}
+            <button
+              type="button"
+              onClick={logout}
+              className="hover:text-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
             >
-              <option value="">Alle</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.username ?? `Nr. ${user.id}`}
-                </option>
-              ))}
-            </select>
-          </label>
+              Abmelden
+            </button>
+          </div>
         </div>
 
-        <Outlet context={{ userId, users } satisfies ShellContext} />
+        <Outlet />
       </div>
     </div>
   )
