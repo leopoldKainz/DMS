@@ -1,7 +1,7 @@
 import { request } from './http'
 
 export interface UserDto {
-  id: number
+  id: string
   username: string | null
   email: string | null
   createdAt: string

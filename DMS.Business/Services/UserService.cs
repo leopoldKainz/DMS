@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using System.Text;
 using DMS.Business.Interfaces;
 using DMS.Business.Models.Validation;
@@ -6,6 +6,7 @@ using DMS.DAL;
 using DMS.DAL.Entities;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DMS.Business.Services;
 
@@ -13,11 +14,11 @@ public class UserService : BaseService<User>, IUserService
 {
     private readonly IValidator<User> _validator;
 
-    public UserService(DmsDbContext context) : this(context, new UserValidator())
+    public UserService(DmsDbContext context, ILogger<UserService> logger) : this(context, new UserValidator(), logger)
     {
     }
 
-    public UserService(DmsDbContext context, IValidator<User> validator) : base(context)
+    public UserService(DmsDbContext context, IValidator<User> validator, ILogger<UserService> logger) : base(context, logger)
     {
         _validator = validator;
     }
@@ -50,27 +51,22 @@ public class UserService : BaseService<User>, IUserService
             .FirstOrDefaultAsync(u => u.EntityId == userId, ct);
     }
 
-    public async Task<User?> GetWithDocumentsAsync(int userId, CancellationToken ct = default)
-    {
-        return await _dbSet
-            .Include(u => u.UserDocuments)
-            .ThenInclude(ud => ud.Document)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
-    }
-
     public async Task<User?> AuthenticateAsync(string usernameOrEmail, string password, CancellationToken ct = default)
     {
         var user = await _dbSet.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail, ct);
         if (user == null)
         {
+            _logger.LogWarning("Login failed: unknown user {UsernameOrEmail}", usernameOrEmail);
             return null;
         }
 
         if (VerifyPassword(password, user.Password))
         {
+            _logger.LogInformation("User {UserId} authenticated", user.EntityId);
             return user;
         }
 
+        _logger.LogWarning("Login failed: wrong password for user {UserId}", user.EntityId);
         return null;
     }
 
@@ -95,30 +91,8 @@ public class UserService : BaseService<User>, IUserService
         user.Password = HashPassword(newPassword);
         _dbSet.Update(user);
         await _context.SaveChangesAsync(ct);
-        return true;
-    }
 
-    public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken ct = default)
-    {
-        var user = await _dbSet.FirstOrDefaultAsync(u => u.Id == userId, ct);
-        if (user == null)
-        {
-            return false;
-        }
-
-        if (!VerifyPassword(currentPassword, user.Password))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(newPassword))
-        {
-            throw new ArgumentException("New password is required.", nameof(newPassword));
-        }
-
-        user.Password = HashPassword(newPassword);
-        _dbSet.Update(user);
-        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("Password changed for user {UserId}", userId);
         return true;
     }
 

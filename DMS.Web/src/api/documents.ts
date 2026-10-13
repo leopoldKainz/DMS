@@ -1,7 +1,7 @@
 import { query, request } from './http'
 
 export interface DocumentDto {
-  id: number
+  id: string
   name: string
   type: string
   size: number
@@ -20,7 +20,7 @@ export function getDocument(id: string) {
   return request<DocumentDto>(`/Document/${id}`)
 }
 
-export function deleteDocument(id: number) {
+export function deleteDocument(id: string) {
   return request<void>(`/Document/${id}`, { method: 'DELETE' })
 }
 

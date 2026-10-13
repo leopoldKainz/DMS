@@ -55,6 +55,8 @@ namespace DMS.API
             TypeAdapterConfig.GlobalSettings.Scan(typeof(MappingConfig).Assembly);
             builder.Services.AddScoped<IDocumentService, DocumentService>();
             builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IUserDocumentService, UserDocumentService>();
+            builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddProblemDetails();
 

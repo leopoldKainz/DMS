@@ -1,7 +1,8 @@
-﻿using DMS.Business.Interfaces;
+using DMS.Business.Interfaces;
 using DMS.DAL;
 using DMS.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DMS.Business.Services;
 
@@ -9,11 +10,13 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
 {
     protected readonly DmsDbContext _context;
     protected readonly DbSet<T> _dbSet;
+    protected readonly ILogger _logger;
 
-    protected BaseService(DmsDbContext context)
+    protected BaseService(DmsDbContext context, ILogger logger)
     {
         _context = context;
         _dbSet = context.Set<T>();
+        _logger = logger;
     }
 
     public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -40,19 +43,22 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
     {
         await _dbSet.AddAsync(entity, ct);
         await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("{EntityType} {EntityId} created", typeof(T).Name, entity.EntityId);
         return entity;
     }
 
-    public virtual void Update(T entity)
+    public virtual async Task UpdateAsync(T entity, CancellationToken ct = default)
     {
         _dbSet.Update(entity);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("{EntityType} {EntityId} updated", typeof(T).Name, entity.EntityId);
     }
 
-    public virtual void Remove(T entity)
+    public virtual async Task RemoveAsync(T entity, CancellationToken ct = default)
     {
         _dbSet.Remove(entity);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("{EntityType} {EntityId} removed", typeof(T).Name, entity.EntityId);
     }
 
     public virtual async Task<bool> RemoveByIdAsync(Guid id, CancellationToken ct = default)
@@ -60,11 +66,13 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
         var entity = await _dbSet.FirstOrDefaultAsync(e => e.EntityId == id, ct);
         if (entity == null)
         {
+            _logger.LogDebug("{EntityType} {EntityId} not found for removal", typeof(T).Name, id);
             return false;
         }
 
         _dbSet.Remove(entity);
         await _context.SaveChangesAsync(ct);
+        _logger.LogInformation("{EntityType} {EntityId} removed", typeof(T).Name, id);
         return true;
     }
 }
