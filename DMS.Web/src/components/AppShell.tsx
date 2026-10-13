@@ -13,30 +13,32 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <div className="mx-auto max-w-5xl px-5 pb-24 pt-8 sm:px-8">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <Link
-            to="/"
-            className="shrink-0 font-serif text-[15px] hover:text-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
-          >
-            Dokumentenverwaltung
+    <div className="min-h-screen">
+      <header className="border-b border-linie bg-papier">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-8">
+          <Link to="/" className="font-condensed text-[19px] font-semibold tracking-[0.01em]">
+            DMS
           </Link>
-          <span className="hidden h-px flex-1 bg-rule sm:block" />
-          <div className="flex items-center gap-4 text-[13px] text-quiet">
-            {session.username ? <span className="text-ink">{session.username}</span> : null}
+          <div className="flex items-center gap-4 text-[14px]">
+            {session.username ? (
+              <span className="text-bleistift">
+                Angemeldet als <span className="font-medium text-graphit">{session.username}</span>
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={logout}
-              className="hover:text-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
+              className="text-bleistift hover:text-graphit hover:underline"
             >
               Abmelden
             </button>
           </div>
         </div>
+      </header>
 
+      <main className="mx-auto max-w-5xl px-4 pb-24 sm:px-8">
         <Outlet />
-      </div>
+      </main>
     </div>
   )
 }

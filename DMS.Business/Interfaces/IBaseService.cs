@@ -9,7 +9,7 @@ public interface IBaseService<T> where T : BaseEntity
     Task<IReadOnlyList<T>> GetAllAsync(CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid id, CancellationToken ct = default);
     Task<T> AddAsync(T entity, CancellationToken ct = default);
-    void Update(T entity);
-    void Remove(T entity);
+    Task UpdateAsync(T entity, CancellationToken ct = default);
+    Task RemoveAsync(T entity, CancellationToken ct = default);
     Task<bool> RemoveByIdAsync(Guid id, CancellationToken ct = default);
 }

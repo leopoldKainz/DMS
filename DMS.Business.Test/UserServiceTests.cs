@@ -3,6 +3,7 @@ using DMS.DAL;
 using DMS.DAL.Entities;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using MockQueryable.Moq;
 using Moq;
 
@@ -30,7 +31,7 @@ public class UserServiceTests
     {
         // Arrange
         var mockSet = SetupUsers();
-        var service = new UserService(_mockContext.Object);
+        var service = new UserService(_mockContext.Object, NullLogger<UserService>.Instance);
         var user = new User { Username = "max", Email = "max@test.at", Password = "secret" };
 
         // Act
@@ -47,7 +48,7 @@ public class UserServiceTests
     {
         // Arrange
         SetupUsers();
-        var service = new UserService(_mockContext.Object);
+        var service = new UserService(_mockContext.Object, NullLogger<UserService>.Instance);
         var user = new User { Username = "max", Email = "max@test.at", Password = "" };
 
         // Act + Assert
@@ -60,7 +61,7 @@ public class UserServiceTests
     {
         // Arrange
         SetupUsers();
-        var service = new UserService(_mockContext.Object);
+        var service = new UserService(_mockContext.Object, NullLogger<UserService>.Instance);
         // Faulty user entity: empty username, invalid email format
         var user = new User { Username = "", Email = "not-an-email", Password = "secret" };
 
@@ -75,7 +76,7 @@ public class UserServiceTests
         // Arrange
         var user = new User { Id = 1, Username = "max", Email = "max@test.at", Password = UserService.HashPassword("secret") };
         SetupUsers(user);
-        var service = new UserService(_mockContext.Object);
+        var service = new UserService(_mockContext.Object, NullLogger<UserService>.Instance);
 
         // Act
         var result = await service.AuthenticateAsync("max", "secret");
@@ -89,7 +90,7 @@ public class UserServiceTests
     {
         // Arrange
         SetupUsers(new User { Id = 1, Username = "max", Email = "max@test.at", Password = UserService.HashPassword("secret") });
-        var service = new UserService(_mockContext.Object);
+        var service = new UserService(_mockContext.Object, NullLogger<UserService>.Instance);
 
         // Act
         var result = await service.AuthenticateAsync("max", "wrong");
@@ -105,7 +106,7 @@ public class UserServiceTests
         var userGuid = Guid.NewGuid();
         var user = new User { Id = 1, EntityId = userGuid, Username = "max", Password = UserService.HashPassword("old") };
         SetupUsers(user);
-        var service = new UserService(_mockContext.Object);
+        var service = new UserService(_mockContext.Object, NullLogger<UserService>.Instance);
 
         // Act
         var result = await service.ChangePasswordAsync(userGuid, "old", "new");

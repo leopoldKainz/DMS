@@ -6,8 +6,8 @@ import {
   type DocumentDto,
 } from '../api/documents'
 import DocumentsTable, { type Sort, type SortKey } from '../components/DocumentsTable'
+import RegisterTabs, { type TypeCount } from '../components/RegisterTabs'
 import UploadField from '../components/UploadField'
-import { formatSize } from '../lib/format'
 
 function compare(a: DocumentDto, b: DocumentDto, sort: Sort): number {
   const dir = sort.dir === 'asc' ? 1 : -1
@@ -53,21 +53,23 @@ export default function Dashboard() {
     }
   }, [debounced, reloads])
 
-  const types = useMemo(() => {
+  const counts = useMemo<TypeCount[]>(() => {
     if (!documents) return []
-    return [...new Set(documents.map((d) => d.type))].sort((a, b) => a.localeCompare(b, 'de'))
+    const byType = new Map<string, number>()
+    for (const doc of documents) byType.set(doc.type, (byType.get(doc.type) ?? 0) + 1)
+    return [...byType]
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type, 'de'))
   }, [documents])
+
+  // A filter for a type that no longer exists would leave an empty, unexplained list.
+  const activeType = counts.some((c) => c.type === typeFilter) ? typeFilter : null
 
   const visible = useMemo(() => {
     if (!documents) return []
-    const filtered = typeFilter ? documents.filter((d) => d.type === typeFilter) : documents
+    const filtered = activeType ? documents.filter((d) => d.type === activeType) : documents
     return [...filtered].sort((a, b) => compare(a, b, sort))
-  }, [documents, typeFilter, sort])
-
-  const totalSize = useMemo(
-    () => (documents ? documents.reduce((sum, d) => sum + d.size, 0) : 0),
-    [documents],
-  )
+  }, [documents, activeType, sort])
 
   const reload = () => setReloads((n) => n + 1)
 
@@ -79,7 +81,7 @@ export default function Dashboard() {
     )
   }
 
-  function remove(id: number) {
+  function remove(id: string) {
     deleteDocument(id)
       .then(reload)
       .catch((e: Error) => setError(e.message))
@@ -87,103 +89,56 @@ export default function Dashboard() {
 
   return (
     <>
-      <h1 className="mt-12 font-serif text-[30px] leading-none">Dokumente</h1>
+      <h1 className="mt-10 text-[34px] leading-tight font-semibold">Dokumente</h1>
+      <p className="mt-1 text-[15px] text-bleistift">
+        Deine eigenen und alle, die mit dir geteilt wurden.
+      </p>
 
-      <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-6 border-b border-rule pb-8">
-        <div>
-          <dd className="font-serif text-[26px] leading-none tabular-nums">
-            {documents ? documents.length : '—'}
-          </dd>
-          <dt className="mt-1.5 text-[13px] text-quiet">
-            {documents?.length === 1 ? 'Eintrag' : 'Einträge'}
-          </dt>
-        </div>
-        <div>
-          <dd className="font-serif text-[26px] leading-none tabular-nums">
-            {documents ? formatSize(totalSize) : '—'}
-          </dd>
-          <dt className="mt-1.5 text-[13px] text-quiet">Belegt</dt>
-        </div>
-        <div>
-          <dd className="font-serif text-[26px] leading-none tabular-nums">
-            {documents ? types.length : '—'}
-          </dd>
-          <dt className="mt-1.5 text-[13px] text-quiet">
-            {types.length === 1 ? 'Dateityp' : 'Dateitypen'}
-          </dt>
-        </div>
-      </dl>
-
-      <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
-        <label className="min-w-56 flex-1 text-[13px] text-quiet">
-          Suche
-          <input
-            type="search"
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            placeholder="Name eines Dokuments"
-            className="mt-1 block w-full border-b border-rule bg-transparent pb-1.5 text-[15px] text-ink placeholder:text-quiet/60 focus:border-stamp focus:outline-none"
-          />
-        </label>
-        <UploadField onUploaded={reload} />
-      </div>
-
-      {types.length > 1 ? (
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]">
-          <button
-            type="button"
-            onClick={() => setTypeFilter(null)}
-            className={
-              typeFilter === null
-                ? 'border-b border-stamp pb-0.5 text-stamp'
-                : 'border-b border-transparent pb-0.5 text-quiet hover:text-ink'
-            }
-          >
-            Alle
-          </button>
-          {types.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setTypeFilter(type)}
-              className={
-                typeFilter === type
-                  ? 'border-b border-stamp pb-0.5 text-stamp'
-                  : 'border-b border-transparent pb-0.5 text-quiet hover:text-ink'
-              }
-            >
-              .{type}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <label className="mt-7 block">
+        <span className="sr-only">Dokumente durchsuchen</span>
+        <input
+          type="search"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          placeholder="Nach Namen suchen"
+          className="block w-full rounded-[4px] border border-linie bg-papier px-3.5 py-2.5 text-[16px] placeholder:text-bleistift/70 focus:border-mappe focus:outline-none"
+        />
+      </label>
 
       {error ? (
-        <p className="mt-10 border-l-2 border-stamp py-1 pl-4 text-sm leading-relaxed">
-          {error} Prüfe, ob der API-Container läuft.
+        <p role="alert" className="mt-6 border-l-4 border-typ-rot bg-papier px-4 py-3 text-[15px]">
+          {error} Läuft die API auf Port 8080?
         </p>
       ) : null}
 
-      {!documents && !error ? <p className="mt-10 text-[13px] text-quiet">Wird geladen</p> : null}
+      <section className="mt-8" aria-label="Dokumentliste">
+        <RegisterTabs
+          total={documents?.length ?? 0}
+          counts={counts}
+          active={activeType}
+          onChange={setTypeFilter}
+        />
 
-      {documents && visible.length === 0 ? (
-        <p className="mt-12 max-w-[38ch] font-serif text-[19px] leading-relaxed text-quiet">
-          {debounced
-            ? `Kein Eintrag passt zu „${debounced}“.`
-            : 'Noch nichts im Register. Lade eine Datei hoch, um den ersten Eintrag anzulegen.'}
-        </p>
-      ) : null}
+        <div className="overflow-hidden rounded-[6px] border border-linie bg-papier">
+          {!documents && !error ? (
+            <p className="px-5 py-8 text-[15px] text-bleistift">Wird geladen …</p>
+          ) : null}
 
-      {visible.length > 0 ? (
-        <div className="mt-8">
-          <DocumentsTable
-            documents={visible}
-            sort={sort}
-            onSort={changeSort}
-            onDelete={remove}
-          />
+          {documents && visible.length === 0 ? (
+            <p className="px-5 py-10 text-[16px] text-bleistift">
+              {debounced
+                ? `Kein Dokument passt zu „${debounced}“.`
+                : 'Noch keine Dokumente. Leg unten die erste Datei ab.'}
+            </p>
+          ) : null}
+
+          {visible.length > 0 ? (
+            <DocumentsTable documents={visible} sort={sort} onSort={changeSort} onDelete={remove} />
+          ) : null}
+
+          <UploadField onUploaded={reload} />
         </div>
-      ) : null}
+      </section>
     </>
   )
 }

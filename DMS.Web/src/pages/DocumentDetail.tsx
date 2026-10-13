@@ -2,8 +2,37 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { deleteDocument, getDocument, type DocumentDto } from '../api/documents'
 import { formatDateLong, formatSize } from '../lib/format'
+import { typeColor, typeInk } from '../lib/fileTypes'
 
-const ROW = 'grid grid-cols-[7rem_1fr] gap-x-4 border-t border-rule py-4 sm:grid-cols-[10rem_1fr]'
+const ROW = 'grid grid-cols-[7.5rem_1fr] gap-x-4 border-t border-linie py-3'
+
+// The document drawn as an A4 sheet (1:√2) with its type tab sticking out at the top.
+function Sheet({ doc }: { doc: DocumentDto }) {
+  const color = typeColor(doc.type)
+  return (
+    <div className="relative mx-auto w-full max-w-[16rem] pt-7" aria-hidden>
+      <span
+        className="absolute top-0 right-6 h-8 rounded-t-[5px] px-3 font-condensed text-[15px] leading-7 font-semibold"
+        style={{ backgroundColor: color, color: typeInk(doc.type) }}
+      >
+        .{doc.type}
+      </span>
+      <div
+        className="relative flex aspect-[1/1.4142] flex-col justify-between border border-linie bg-papier p-5"
+        style={{ boxShadow: `inset 0 3px 0 ${color}` }}
+      >
+        <div className="space-y-2.5 pt-3">
+          {[92, 100, 84, 96, 61].map((w, i) => (
+            <span key={i} className="block h-[3px] bg-linie" style={{ width: `${w}%` }} />
+          ))}
+        </div>
+        <p className="font-condensed text-[15px] leading-snug break-words text-bleistift">
+          {doc.name}.{doc.type}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 export default function DocumentDetail() {
   const { id } = useParams()
@@ -27,74 +56,75 @@ export default function DocumentDetail() {
 
   return (
     <>
-      <p className="mt-12">
-        <Link
-          to="/"
-          className="text-[13px] text-quiet hover:text-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
-        >
-          Zurück zum Register
+      <p className="mt-8">
+        <Link to="/" className="text-[14px] text-bleistift hover:text-graphit hover:underline">
+          Zurück zu den Dokumenten
         </Link>
       </p>
 
-      {!doc && !error ? <p className="mt-10 text-[13px] text-quiet">Wird geladen</p> : null}
+      {!doc && !error ? <p className="mt-10 text-[15px] text-bleistift">Wird geladen …</p> : null}
 
       {error ? (
-        <p className="mt-10 border-l-2 border-stamp py-1 pl-4 text-sm leading-relaxed">
-          {error} Prüfe die Kennung in der Adresszeile.
+        <p role="alert" className="mt-8 border-l-4 border-typ-rot bg-papier px-4 py-3 text-[15px]">
+          {error} Prüfe die Adresse oder geh zurück zur Übersicht.
         </p>
       ) : null}
 
       {doc ? (
-        <>
-          <h1 className="mt-6 max-w-[22ch] font-serif text-[32px] leading-[1.15] sm:text-[44px]">
-            {doc.name}
-          </h1>
-          <p className="mt-3 font-serif text-[18px] text-stamp">.{doc.type}</p>
+        <div className="mt-8 grid gap-10 md:grid-cols-[16rem_1fr] md:gap-14">
+          <Sheet doc={doc} />
 
-          <dl className="mt-12 max-w-xl border-b border-rule text-sm">
-            <div className={ROW}>
-              <dt className="text-quiet">Größe</dt>
-              <dd className="tabular-nums">{formatSize(doc.size)}</dd>
-            </div>
-            <div className={ROW}>
-              <dt className="text-quiet">Erstellt</dt>
-              <dd>{formatDateLong(doc.createdAt)}</dd>
-            </div>
-            <div className={ROW}>
-              <dt className="text-quiet">Kennung</dt>
-              <dd className="tabular-nums">{doc.id}</dd>
-            </div>
-          </dl>
+          <div className="min-w-0">
+            <h1 className="text-[30px] leading-tight font-semibold break-words sm:text-[38px]">
+              {doc.name}
+            </h1>
 
-          <div className="mt-8 text-[13px]">
-            {confirming ? (
-              <>
+            <dl className="mt-8 max-w-lg border-b border-linie text-[15px]">
+              <div className={ROW}>
+                <dt className="text-bleistift">Typ</dt>
+                <dd className="font-condensed text-[16px]">.{doc.type}</dd>
+              </div>
+              <div className={ROW}>
+                <dt className="text-bleistift">Größe</dt>
+                <dd className="tabular-nums">{formatSize(doc.size)}</dd>
+              </div>
+              <div className={ROW}>
+                <dt className="text-bleistift">Hinzugefügt</dt>
+                <dd>{formatDateLong(doc.createdAt)}</dd>
+              </div>
+            </dl>
+
+            <div className="mt-8 text-[15px]">
+              {confirming ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span>Dieses Dokument endgültig löschen?</span>
+                  <button
+                    type="button"
+                    onClick={remove}
+                    className="rounded-[4px] bg-typ-rot px-3 py-1.5 font-medium text-white hover:brightness-95"
+                  >
+                    Löschen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(false)}
+                    className="text-bleistift hover:text-graphit"
+                  >
+                    Behalten
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={remove}
-                  className="text-stamp underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
+                  onClick={() => setConfirming(true)}
+                  className="text-bleistift hover:text-typ-rot hover:underline"
                 >
-                  Endgültig löschen
+                  Dokument löschen
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirming(false)}
-                  className="ml-4 text-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
-                >
-                  Abbrechen
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirming(true)}
-                className="text-quiet hover:text-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp"
-              >
-                Dokument löschen
-              </button>
-            )}
+              )}
+            </div>
           </div>
-        </>
+        </div>
       ) : null}
     </>
   )

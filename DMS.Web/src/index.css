@@ -1,13 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Spectral:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f1f2ee;
-  --color-ink: #22282b;
-  --color-quiet: #6e7570;
-  --color-rule: #d8dad3;
-  --color-stamp: #7b3fa0;
+  --color-ablage: #eef0f1;
+  --color-papier: #fbfbf9;
+  --color-graphit: #23272e;
+  --color-bleistift: #5f656e;
+  --color-linie: #dcdfe3;
+  --color-reiter: #e2e5e8;
+  --color-mappe: #2f6b55;
 
-  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+  --color-typ-rot: #c8402f;
+  --color-typ-blau: #2f5da8;
+  --color-typ-gruen: #357a45;
+  --color-typ-ocker: #c99a2e;
+  --color-typ-grau: #8a9099;
+
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-condensed: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-ablage);
+    color: var(--color-graphit);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mappe);
+    outline-offset: 3px;
+  }
 }
