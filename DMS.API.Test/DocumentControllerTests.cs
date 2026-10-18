@@ -5,6 +5,7 @@ using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
 using Mapster;
+using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -16,6 +17,7 @@ public class DocumentControllerTests
 {
     private Mock<IDocumentService> _mockService = null!;
     private Mock<IUnitOfWork> _mockUnitOfWork = null!;
+    private Mock<IPublishEndpoint> _mockPublishEndpoint = null!;
     private DocumentController _controller = null!;
     private Guid _userGuid;
 
@@ -29,9 +31,10 @@ public class DocumentControllerTests
     public void Setup()
     {
         _mockService = new Mock<IDocumentService>();
+        _mockPublishEndpoint = new Mock<IPublishEndpoint>();
         _userGuid = Guid.NewGuid();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _controller = new DocumentController(_mockService.Object, _mockUnitOfWork.Object)
+        _controller = new DocumentController(_mockService.Object, _mockUnitOfWork.Object , _mockPublishEndpoint.Object)
         {
             ControllerContext = new ControllerContext
             {

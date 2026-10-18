@@ -32,6 +32,10 @@ POSTGRES_DB=dms
 POSTGRES_USER=dms
 POSTGRES_PASSWORD=dms_password
 ASPNETCORE_ENVIRONMENT=Development
+ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=dms;Username=dms;Password=dms_password
+RABBITMQ_DEFAULT_USER=rabbitmq
+RABBITMQ_DEFAULT_PASS=rabbitmq_password
+ConnectionStrings__RabbitMq=amqp://rabbitmq:rabbitmq_password@rabbitmq:5672
 ```
 
 > **Note:**
@@ -46,7 +50,7 @@ ASPNETCORE_ENVIRONMENT=Development
 From the root directory, run:
 
 ```bash
-docker compose --env-file .env.local -f local-compose.yml up --build
+docker compose -f local-compose.yml up --build
 ```
 *(Add `-d` to run in detached/background mode)*
 
@@ -60,6 +64,8 @@ The database will initialize automatically using `drawSQL-pgsql-export-2026-09-2
 | **API** | `http://localhost:8080` | DMS REST API |
 | **Swagger UI** | `http://localhost:8080/swagger` | Interactive API documentation |
 | **PostgreSQL** | `localhost:5432` | Database instance |
+| **RabbitMQ** | `localhost:5672` | Message broker instance |
+| **RabbitMQ Management UI** | `http://localhost:15672` | RabbitMQ management interface |
 
 ---
 
@@ -67,10 +73,10 @@ The database will initialize automatically using `drawSQL-pgsql-export-2026-09-2
 
 - **Stop containers:**
   ```bash
-  docker compose --env-file .env.local -f local-compose.yml down
+  docker compose -f local-compose.yml down
   ```
 
 - **Reset database (removes volume data and triggers fresh schema initialization on next start):**
   ```bash
-  docker compose --env-file .env.local -f local-compose.yml down -v
+  docker compose -f local-compose.yml down -v
   ```
