@@ -57,3 +57,9 @@ jobs:
       # TODO: Add test step for frontend when tests are implemented
       # - name: Run tests
       #   run: npm test -- --watchAll=false
+      
+  ci-complete:
+    needs: [ backend-test, frontend-test ]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All checks passed!"
