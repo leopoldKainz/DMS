@@ -76,7 +76,6 @@ public class UserDocumentService : IUserDocumentService
         };
 
         await _context.UserDocuments.AddAsync(userDocument, ct);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Granted {Permission} on document {DocumentId} to user {UserId}", permission, documentId, userId);
         return userDocument;
@@ -92,7 +91,6 @@ public class UserDocumentService : IUserDocumentService
 
         userDocument.Permission = permission;
         _context.UserDocuments.Update(userDocument);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Changed permission on document {DocumentId} for user {UserId} to {Permission}", documentId, userId, permission);
         return true;
@@ -107,7 +105,6 @@ public class UserDocumentService : IUserDocumentService
         }
 
         _context.UserDocuments.Remove(userDocument);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Revoked access on document {DocumentId} for user {UserId}", documentId, userId);
         return true;

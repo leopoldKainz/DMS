@@ -55,19 +55,19 @@ export default function Login() {
       footer={
         <>
           Noch kein Konto?{' '}
-          <Link to="/register" className="border-b border-stamp pb-0.5 text-stamp">
+          <Link to="/register" className="font-medium text-mappe underline underline-offset-4">
             Registrieren
           </Link>
         </>
       }
     >
       {registered ? (
-        <p className="mb-8 border-l-2 border-stamp py-1 pl-4 text-sm leading-relaxed">
+        <p className="mb-6 border-l-4 border-mappe py-1 pl-3 text-[15px]">
           Konto angelegt. Du kannst dich jetzt anmelden.
         </p>
       ) : null}
 
-      <form noValidate onSubmit={submit} className="space-y-7">
+      <form noValidate onSubmit={submit} className="space-y-5">
         <TextField
           label="Benutzername oder E-Mail"
           name="usernameOrEmail"
@@ -89,7 +89,7 @@ export default function Login() {
         />
 
         {failure ? (
-          <p role="alert" className="border-l-2 border-stamp py-1 pl-4 text-sm leading-relaxed">
+          <p role="alert" className="border-l-4 border-typ-rot py-1 pl-3 text-[15px]">
             {failure}
           </p>
         ) : null}
@@ -97,7 +97,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-ink py-2.5 text-[14px] text-paper hover:bg-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp disabled:opacity-60"
+          className="w-full rounded-[4px] bg-mappe py-2.5 text-[15px] font-medium text-white hover:brightness-110 disabled:opacity-60"
         >
           {busy ? 'Wird angemeldet' : 'Anmelden'}
         </button>

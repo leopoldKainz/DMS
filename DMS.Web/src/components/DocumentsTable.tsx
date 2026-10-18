@@ -29,9 +29,18 @@ interface Props {
   sort: Sort
   onSort: (key: SortKey) => void
   onDelete: (id: string) => void
+  selectedId?: string | null
+  onSelect?: (id: string) => void
 }
 
-export default function DocumentsTable({ documents, sort, onSort, onDelete }: Props) {
+export default function DocumentsTable({
+  documents,
+  sort,
+  onSort,
+  onDelete,
+  selectedId,
+  onSelect,
+}: Props) {
   const [confirming, setConfirming] = useState<string | null>(null)
 
   return (
@@ -63,12 +72,26 @@ export default function DocumentsTable({ documents, sort, onSort, onDelete }: Pr
 
       <tbody>
         {documents.map((doc) => (
-          <tr key={doc.id} className="border-b border-linie last:border-b-0 hover:bg-ablage/60">
+          <tr
+            key={doc.id}
+            className={`border-b border-linie last:border-b-0 ${
+              selectedId === doc.id ? 'bg-ablage' : 'hover:bg-ablage/60'
+            }`}
+          >
             <td
               className="py-3.5 pr-4 pl-5 align-top"
               style={{ boxShadow: `inset 4px 0 0 ${typeColor(doc.type)}` }}
             >
-              <Link to={`/documents/${doc.id}`} className="text-[16px] font-medium hover:underline">
+              <Link
+                to={`/documents/${doc.id}`}
+                aria-current={selectedId === doc.id ? 'true' : undefined}
+                onClick={(e) => {
+                  if (!onSelect || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                  e.preventDefault()
+                  onSelect(doc.id)
+                }}
+                className="text-[16px] font-medium hover:underline"
+              >
                 {doc.name}
               </Link>
               <span className="mt-0.5 block text-[13px] tabular-nums text-bleistift sm:hidden">

@@ -9,21 +9,20 @@ interface Props {
 
 export default function AuthLayout({ title, intro, children, footer }: Props) {
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <div className="mx-auto max-w-5xl px-5 pt-8 sm:px-8">
-        <div className="flex items-center gap-x-5">
-          <span className="shrink-0 font-serif text-[15px]">Dokumentenverwaltung</span>
-          <span className="hidden h-px flex-1 bg-rule sm:block" />
+    <div className="min-h-screen">
+      <header className="border-b border-linie bg-papier">
+        <div className="mx-auto max-w-5xl px-4 py-3 sm:px-8">
+          <span className="font-condensed text-[19px] font-semibold tracking-[0.01em]">DMS</span>
         </div>
-      </div>
+      </header>
 
-      <main className="mx-auto max-w-sm px-5 pb-24 pt-20 sm:pt-28">
-        <h1 className="font-serif text-[30px] leading-none">{title}</h1>
-        <p className="mt-4 text-[15px] leading-relaxed text-quiet">{intro}</p>
+      <main className="mx-auto max-w-sm px-4 pt-16 pb-24 sm:pt-24">
+        <h1 className="text-[34px] leading-tight font-semibold">{title}</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-bleistift">{intro}</p>
 
-        <div className="mt-10">{children}</div>
+        <div className="mt-8 rounded-[6px] border border-linie bg-papier p-6">{children}</div>
 
-        <p className="mt-10 border-t border-rule pt-6 text-[13px] text-quiet">{footer}</p>
+        <p className="mt-6 text-[14px] text-bleistift">{footer}</p>
       </main>
     </div>
   )

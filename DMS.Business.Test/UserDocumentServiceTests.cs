@@ -38,7 +38,7 @@ public class UserDocumentServiceTests
     private UserDocumentService CreateService() => new(_mockContext.Object, NullLogger<UserDocumentService>.Instance);
 
     [Test]
-    public async Task GrantAsync_NewLink_AddsAndSaves()
+    public async Task GrantAsync_NewLink_AddsWithoutSaving()
     {
         var service = CreateService();
 
@@ -47,7 +47,7 @@ public class UserDocumentServiceTests
         Assert.That(result.UserId, Is.EqualTo(2));
         Assert.That(result.DocumentId, Is.EqualTo(10));
         _mockUserDocuments.Verify(s => s.AddAsync(result, It.IsAny<CancellationToken>()), Times.Once);
-        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -77,7 +77,7 @@ public class UserDocumentServiceTests
 
         Assert.That(result, Is.True);
         Assert.That(_link.Permission, Is.EqualTo(Permission.Owner));
-        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]

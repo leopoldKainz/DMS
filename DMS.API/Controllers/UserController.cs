@@ -15,11 +15,13 @@ public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly ITokenService _tokenService;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UserController(IUserService userService, ITokenService tokenService)
+    public UserController(IUserService userService, ITokenService tokenService, IUnitOfWork unitOfWork)
     {
         _userService = userService;
         _tokenService = tokenService;
+        _unitOfWork = unitOfWork;
     }
 
     [AllowAnonymous]
@@ -43,6 +45,7 @@ public class UserController : ControllerBase
 
         User user = dto.Adapt<User>();
         User createdUser = await _userService.AddAsync(user);
+        await _unitOfWork.SaveChangesAsync();
         UserDto resultDto = createdUser.Adapt<UserDto>();
 
         return CreatedAtAction(nameof(GetById), new { id = resultDto.Id }, resultDto);
@@ -63,8 +66,22 @@ public class UserController : ControllerBase
             return Unauthorized("Invalid username/email or password.");
         }
 
+        await _unitOfWork.SaveChangesAsync();
+
         var (token, expiresAt) = _tokenService.CreateToken(user);
         return Ok(new LoginResponseDto(token, expiresAt, user.Adapt<UserDto>()));
+    }
+
+    [HttpGet("me")]
+    public async Task<ActionResult<UserDto>> GetMe()
+    {
+        User? user = await _userService.GetByIdAsync(User.GetUserId());
+        if (user == null)
+        {
+            return NotFound("The signed-in user no longer exists.");
+        }
+
+        return Ok(user.Adapt<UserDto>());
     }
 
     [HttpGet("{id:guid}")]
@@ -76,14 +93,14 @@ public class UserController : ControllerBase
             return NotFound($"User with ID {id} not found.");
         }
 
-        return Ok(user.Adapt<UserDto>());
+        return Ok(ToVisibleDto(user));
     }
 
     [HttpGet]
     public async Task<ActionResult<List<UserDto>>> GetAll()
     {
         IReadOnlyList<User> users = await _userService.GetAllAsync();
-        return Ok(users.Adapt<List<UserDto>>());
+        return Ok(users.Select(ToVisibleDto).ToList());
     }
 
     [HttpGet("by-username/{username}")]
@@ -95,7 +112,7 @@ public class UserController : ControllerBase
             return NotFound($"User '{username}' not found.");
         }
 
-        return Ok(user.Adapt<UserDto>());
+        return Ok(ToVisibleDto(user));
     }
 
     [HttpGet("by-email/{email}")]
@@ -107,6 +124,12 @@ public class UserController : ControllerBase
             return NotFound($"User with email '{email}' not found.");
         }
 
-        return Ok(user.Adapt<UserDto>());
+        return Ok(ToVisibleDto(user));
+    }
+
+    private UserDto ToVisibleDto(User user)
+    {
+        UserDto dto = user.Adapt<UserDto>();
+        return user.EntityId == User.GetUserId() ? dto : dto with { Email = null };
     }
 }

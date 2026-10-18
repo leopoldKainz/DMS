@@ -10,8 +10,8 @@ export default function TextField({ label, error, id, ...input }: Props) {
   const errorId = error ? `${fieldId}-error` : undefined
 
   return (
-    <div className="text-[13px]">
-      <label htmlFor={fieldId} className="text-quiet">
+    <div>
+      <label htmlFor={fieldId} className="text-[14px] font-medium">
         {label}
       </label>
       <input
@@ -19,12 +19,12 @@ export default function TextField({ label, error, id, ...input }: Props) {
         aria-invalid={error ? true : undefined}
         aria-describedby={errorId}
         {...input}
-        className={`mt-1 block w-full border-b bg-transparent pb-1.5 text-[15px] text-ink placeholder:text-quiet/60 focus:outline-none ${
-          error ? 'border-stamp' : 'border-rule focus:border-stamp'
+        className={`mt-1.5 block w-full rounded-[4px] border bg-white px-3 py-2 text-[16px] placeholder:text-bleistift/70 focus:outline-none ${
+          error ? 'border-typ-rot' : 'border-linie focus:border-mappe'
         }`}
       />
       {error ? (
-        <p id={errorId} className="mt-1.5 text-stamp">
+        <p id={errorId} className="mt-1.5 text-[14px] text-typ-rot">
           {error}
         </p>
       ) : null}

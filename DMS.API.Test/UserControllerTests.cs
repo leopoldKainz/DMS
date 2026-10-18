@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using DMS.API.Auth;
 using DMS.API.Controllers;
 using DMS.Business.Interfaces;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using Mapster;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Moq;
 
 namespace DMS.API.Test;
@@ -13,7 +16,9 @@ public class UserControllerTests
 {
     private Mock<IUserService> _mockService = null!;
     private Mock<ITokenService> _mockTokenService = null!;
+    private Mock<IUnitOfWork> _mockUnitOfWork = null!;
     private UserController _controller = null!;
+    private Guid _currentUserGuid;
 
     [OneTimeSetUp]
     public void RegisterMappings()
@@ -26,7 +31,19 @@ public class UserControllerTests
     {
         _mockService = new Mock<IUserService>();
         _mockTokenService = new Mock<ITokenService>();
-        _controller = new UserController(_mockService.Object, _mockTokenService.Object);
+        _currentUserGuid = Guid.NewGuid();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _controller = new UserController(_mockService.Object, _mockTokenService.Object, _mockUnitOfWork.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(JwtRegisteredClaimNames.Sub, _currentUserGuid.ToString())], "Test"))
+                }
+            }
+        };
     }
     
     [Test]
@@ -50,6 +67,7 @@ public class UserControllerTests
         Assert.That(createdDto!.Id, Is.EqualTo(userGuid));
         Assert.That(createdDto.Username, Is.EqualTo("max"));
         Assert.That(createdDto.Email, Is.EqualTo("max@test.at"));
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -64,6 +82,7 @@ public class UserControllerTests
 
         // Assert
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -250,7 +269,58 @@ public class UserControllerTests
         Assert.That(ok, Is.Not.Null);
         var dto = ok!.Value as UserDto;
         Assert.That(dto!.Id, Is.EqualTo(userGuid));
-        Assert.That(dto.Email, Is.EqualTo("max@test.at"));
+        Assert.That(dto.Email, Is.Null);
+    }
+
+    [Test]
+    public async Task GetById_CurrentUser_ReturnsOwnEmail()
+    {
+        var user = new User { Id = 1, EntityId = _currentUserGuid, Username = "me", Email = "me@test.at" };
+        _mockService.Setup(s => s.GetByIdAsync(_currentUserGuid, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var result = await _controller.GetById(_currentUserGuid);
+
+        var dto = (result.Result as OkObjectResult)!.Value as UserDto;
+        Assert.That(dto!.Email, Is.EqualTo("me@test.at"));
+    }
+
+    [Test]
+    public async Task GetAll_OtherUsers_HidesTheirEmails()
+    {
+        var users = new List<User>
+        {
+            new() { Id = 1, EntityId = _currentUserGuid, Username = "me", Email = "me@test.at" },
+            new() { Id = 2, EntityId = Guid.NewGuid(), Username = "other", Email = "other@test.at" }
+        };
+        _mockService.Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(users);
+
+        var result = await _controller.GetAll();
+
+        var dtos = (result.Result as OkObjectResult)!.Value as List<UserDto>;
+        Assert.That(dtos![0].Email, Is.EqualTo("me@test.at"));
+        Assert.That(dtos[1].Email, Is.Null);
+    }
+
+    [Test]
+    public async Task GetMe_ExistingUser_ReturnsOwnUser()
+    {
+        var user = new User { Id = 1, EntityId = _currentUserGuid, Username = "me", Email = "me@test.at" };
+        _mockService.Setup(s => s.GetByIdAsync(_currentUserGuid, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var result = await _controller.GetMe();
+
+        var dto = (result.Result as OkObjectResult)!.Value as UserDto;
+        Assert.That(dto!.Id, Is.EqualTo(_currentUserGuid));
+    }
+
+    [Test]
+    public async Task GetMe_DeletedUser_ReturnsNotFound()
+    {
+        _mockService.Setup(s => s.GetByIdAsync(_currentUserGuid, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        var result = await _controller.GetMe();
+
+        Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
     }
 
     [Test]
