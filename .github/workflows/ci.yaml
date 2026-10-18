@@ -59,7 +59,7 @@ jobs:
       #   run: npm test -- --watchAll=false
       
   ci-complete:
-    needs: [ backend-test, frontend-test ]
+    needs: [ build-and-test-backend, build-frontend ]
     runs-on: ubuntu-latest
     steps:
       - run: echo "All checks passed!"
