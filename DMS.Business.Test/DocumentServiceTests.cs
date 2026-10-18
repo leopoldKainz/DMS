@@ -51,7 +51,7 @@ public class DocumentServiceTests
     }
 
     [Test]
-    public async Task AddForOwnerAsync_ExistingUser_AddsDocumentWithOwnerPermissionInOneSave()
+    public async Task AddForOwnerAsync_ExistingUser_AddsDocumentWithOwnerPermission()
     {
         // Arrange
         var service = new DocumentService(_mockContext.Object, NullLogger<DocumentService>.Instance);
@@ -66,7 +66,7 @@ public class DocumentServiceTests
         _mockUserDocuments.Verify(s => s.AddAsync(
             It.Is<UserDocument>(ud => ud.UserId == 1 && ud.Document == newDocument && ud.Permission == Permission.Owner),
             It.IsAny<CancellationToken>()), Times.Once);
-        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -137,7 +137,7 @@ public class DocumentServiceTests
     }
 
     [Test]
-    public async Task RemoveByIdAsync_ExistingId_RemovesAndSaves()
+    public async Task RemoveByIdAsync_ExistingId_RemovesWithoutSaving()
     {
         var service = new DocumentService(_mockContext.Object, NullLogger<DocumentService>.Instance);
 
@@ -145,6 +145,6 @@ public class DocumentServiceTests
 
         Assert.That(result, Is.True);
         _mockDocuments.Verify(s => s.Remove(_invoice), Times.Once);
-        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

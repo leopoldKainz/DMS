@@ -92,7 +92,6 @@ public class DocumentService : BaseService<Document>, IDocumentService
 
         await _dbSet.AddAsync(document, ct);
         await _context.UserDocuments.AddAsync(userDocument, ct);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Document {DocumentId} ({DocumentName}) uploaded by user {UserId}",
             document.EntityId, document.Name, ownerUserId);

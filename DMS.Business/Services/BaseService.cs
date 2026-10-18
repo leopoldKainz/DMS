@@ -42,23 +42,22 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
     public virtual async Task<T> AddAsync(T entity, CancellationToken ct = default)
     {
         await _dbSet.AddAsync(entity, ct);
-        await _context.SaveChangesAsync(ct);
         _logger.LogInformation("{EntityType} {EntityId} created", typeof(T).Name, entity.EntityId);
         return entity;
     }
 
-    public virtual async Task UpdateAsync(T entity, CancellationToken ct = default)
+    public virtual Task UpdateAsync(T entity, CancellationToken ct = default)
     {
         _dbSet.Update(entity);
-        await _context.SaveChangesAsync(ct);
         _logger.LogInformation("{EntityType} {EntityId} updated", typeof(T).Name, entity.EntityId);
+        return Task.CompletedTask;
     }
 
-    public virtual async Task RemoveAsync(T entity, CancellationToken ct = default)
+    public virtual Task RemoveAsync(T entity, CancellationToken ct = default)
     {
         _dbSet.Remove(entity);
-        await _context.SaveChangesAsync(ct);
         _logger.LogInformation("{EntityType} {EntityId} removed", typeof(T).Name, entity.EntityId);
+        return Task.CompletedTask;
     }
 
     public virtual async Task<bool> RemoveByIdAsync(Guid id, CancellationToken ct = default)
@@ -71,7 +70,6 @@ public abstract class BaseService<T> : IBaseService<T> where T : BaseEntity
         }
 
         _dbSet.Remove(entity);
-        await _context.SaveChangesAsync(ct);
         _logger.LogInformation("{EntityType} {EntityId} removed", typeof(T).Name, id);
         return true;
     }

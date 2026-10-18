@@ -3,6 +3,7 @@ using DMS.API.Controllers;
 using DMS.Business.Interfaces;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
+using DMS.DAL.Enums;
 using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ namespace DMS.API.Test;
 public class DocumentControllerTests
 {
     private Mock<IDocumentService> _mockService = null!;
+    private Mock<IUnitOfWork> _mockUnitOfWork = null!;
     private DocumentController _controller = null!;
     private Guid _userGuid;
 
@@ -28,7 +30,8 @@ public class DocumentControllerTests
     {
         _mockService = new Mock<IDocumentService>();
         _userGuid = Guid.NewGuid();
-        _controller = new DocumentController(_mockService.Object)
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _controller = new DocumentController(_mockService.Object, _mockUnitOfWork.Object)
         {
             ControllerContext = new ControllerContext
             {
@@ -50,6 +53,7 @@ public class DocumentControllerTests
         var docGuid = Guid.NewGuid();
         var document = new Document { Id = 1, EntityId = docGuid, Name = "invoice.pdf", Type = "application/pdf", Size = 100 };
         _mockService.Setup(s => s.GetByIdAsync(docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(document);
+        _mockService.Setup(s => s.HasAccessAsync(_userGuid, docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         // Act
         var result = await _controller.GetById(docGuid);
@@ -73,6 +77,19 @@ public class DocumentControllerTests
         var result = await _controller.GetById(unknownGuid);
 
         // Assert
+        Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
+    }
+
+    [Test]
+    public async Task GetById_DocumentOfOtherUser_ReturnsNotFound()
+    {
+        var docGuid = Guid.NewGuid();
+        var document = new Document { Id = 1, EntityId = docGuid, Name = "foreign", Type = "pdf", Size = 100 };
+        _mockService.Setup(s => s.GetByIdAsync(docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(document);
+        _mockService.Setup(s => s.HasAccessAsync(_userGuid, docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var result = await _controller.GetById(docGuid);
+
         Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
     }
 
@@ -100,6 +117,7 @@ public class DocumentControllerTests
         Assert.That(dtos![0].Id, Is.EqualTo(docGuid));
         Assert.That(dtos[0].Name, Is.EqualTo("invoice"));
         Assert.That(dtos[0].Type, Is.EqualTo("pdf"));
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _mockService.Verify(s => s.AddForOwnerAsync(_userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -198,6 +216,8 @@ public class DocumentControllerTests
     {
         // Arrange
         var docGuid = Guid.NewGuid();
+        _mockService.Setup(s => s.HasAccessAsync(_userGuid, docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _mockService.Setup(s => s.HasPermissionAsync(_userGuid, docGuid, Permission.Owner, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _mockService.Setup(s => s.RemoveByIdAsync(docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         // Act
@@ -205,6 +225,7 @@ public class DocumentControllerTests
 
         // Assert
         Assert.That(result, Is.InstanceOf<NoContentResult>());
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -212,12 +233,28 @@ public class DocumentControllerTests
     {
         // Arrange
         var unknownGuid = Guid.NewGuid();
-        _mockService.Setup(s => s.RemoveByIdAsync(unknownGuid, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _mockService.Setup(s => s.HasAccessAsync(_userGuid, unknownGuid, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         // Act
         var result = await _controller.Delete(unknownGuid);
 
         // Assert
         Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
+        _mockService.Verify(s => s.RemoveByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Delete_SharedButNotOwner_ReturnsForbidden()
+    {
+        var docGuid = Guid.NewGuid();
+        _mockService.Setup(s => s.HasAccessAsync(_userGuid, docGuid, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _mockService.Setup(s => s.HasPermissionAsync(_userGuid, docGuid, Permission.Owner, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var result = await _controller.Delete(docGuid);
+
+        Assert.That(result, Is.InstanceOf<ObjectResult>());
+        Assert.That(((ObjectResult)result).StatusCode, Is.EqualTo(StatusCodes.Status403Forbidden));
+        _mockService.Verify(s => s.RemoveByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

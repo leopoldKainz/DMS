@@ -56,12 +56,18 @@ public class UserService : BaseService<User>, IUserService
         var user = await _dbSet.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail, ct);
         if (user == null)
         {
-            _logger.LogWarning("Login failed: unknown user {UsernameOrEmail}", usernameOrEmail);
+            _logger.LogWarning("Login failed: unknown user");
             return null;
         }
 
-        if (VerifyPassword(password, user.Password))
+        if (VerifyPassword(password, user.Password, out bool needsRehash))
         {
+            if (needsRehash)
+            {
+                user.Password = HashPassword(password);
+                _logger.LogInformation("Password hash upgraded for user {UserId}", user.EntityId);
+            }
+
             _logger.LogInformation("User {UserId} authenticated", user.EntityId);
             return user;
         }
@@ -90,7 +96,6 @@ public class UserService : BaseService<User>, IUserService
 
         user.Password = HashPassword(newPassword);
         _dbSet.Update(user);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Password changed for user {UserId}", userId);
         return true;
@@ -113,17 +118,47 @@ public class UserService : BaseService<User>, IUserService
         return await base.AddAsync(entity, ct);
     }
 
+    private const string HashVersion = "v1";
+    private const int HashIterations = 600_000;
+    private const int SaltSize = 16;
+    private const int KeySize = 32;
+
     public static string HashPassword(string password)
     {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToHexString(hash);
+        var salt = RandomNumberGenerator.GetBytes(SaltSize);
+        var key = Rfc2898DeriveBytes.Pbkdf2(password, salt, HashIterations, HashAlgorithmName.SHA256, KeySize);
+        return $"{HashVersion}.{HashIterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(key)}";
     }
 
     public static bool VerifyPassword(string password, string storedHash)
     {
-        var hash = HashPassword(password);
-        return string.Equals(hash, storedHash, StringComparison.OrdinalIgnoreCase);
+        return VerifyPassword(password, storedHash, out _);
+    }
+
+    private static bool VerifyPassword(string password, string storedHash, out bool needsRehash)
+    {
+        needsRehash = false;
+        var parts = storedHash.Split('.');
+
+        if (parts.Length == 1)
+        {
+            needsRehash = true;
+            var legacy = SHA256.HashData(Encoding.UTF8.GetBytes(password));
+            return CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(Convert.ToHexString(legacy)),
+                Encoding.ASCII.GetBytes(storedHash.ToUpperInvariant()));
+        }
+
+        if (parts.Length != 4 || parts[0] != HashVersion || !int.TryParse(parts[1], out int iterations))
+        {
+            return false;
+        }
+
+        var salt = Convert.FromBase64String(parts[2]);
+        var expected = Convert.FromBase64String(parts[3]);
+        var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length);
+
+        needsRehash = iterations != HashIterations;
+        return CryptographicOperations.FixedTimeEquals(actual, expected);
     }
 }

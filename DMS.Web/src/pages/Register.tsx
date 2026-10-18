@@ -69,13 +69,13 @@ export default function Register() {
       footer={
         <>
           Schon registriert?{' '}
-          <Link to="/login" className="border-b border-stamp pb-0.5 text-stamp">
+          <Link to="/login" className="font-medium text-mappe underline underline-offset-4">
             Anmelden
           </Link>
         </>
       }
     >
-      <form noValidate onSubmit={submit} className="space-y-7">
+      <form noValidate onSubmit={submit} className="space-y-5">
         <TextField
           label="Benutzername"
           name="username"
@@ -114,7 +114,7 @@ export default function Register() {
         />
 
         {failure ? (
-          <p role="alert" className="border-l-2 border-stamp py-1 pl-4 text-sm leading-relaxed">
+          <p role="alert" className="border-l-4 border-typ-rot py-1 pl-3 text-[15px]">
             {failure}
           </p>
         ) : null}
@@ -122,7 +122,7 @@ export default function Register() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-ink py-2.5 text-[14px] text-paper hover:bg-stamp focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stamp disabled:opacity-60"
+          className="w-full rounded-[4px] bg-mappe py-2.5 text-[15px] font-medium text-white hover:brightness-110 disabled:opacity-60"
         >
           {busy ? 'Wird angelegt' : 'Konto anlegen'}
         </button>

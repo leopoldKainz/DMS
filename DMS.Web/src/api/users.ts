@@ -11,6 +11,10 @@ export function listUsers() {
   return request<UserDto[]>('/User')
 }
 
+export function getMe(signal?: AbortSignal) {
+  return request<UserDto>('/User/me', { signal })
+}
+
 export interface LoginResponse {
   token: string
   expiresAt: string

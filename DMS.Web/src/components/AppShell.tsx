@@ -1,11 +1,37 @@
+import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useNavigate } from 'react-router'
-import { clearSession, getSession } from '../api/http'
+import { ApiError, clearSession, getSession } from '../api/http'
+import { getMe } from '../api/users'
 
 export default function AppShell() {
   const navigate = useNavigate()
   const session = getSession()
+  const [verified, setVerified] = useState(false)
+  const token = session?.token
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+
+    getMe(AbortSignal.timeout(5000))
+      .catch((e: unknown) => {
+        if (cancelled) return
+        if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {
+          clearSession()
+          navigate('/login', { replace: true })
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setVerified(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [token, navigate])
 
   if (!session) return <Navigate to="/login" replace />
+  if (!verified) return null
 
   function logout() {
     clearSession()
@@ -15,7 +41,7 @@ export default function AppShell() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-linie bg-papier">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
           <Link to="/" className="font-condensed text-[19px] font-semibold tracking-[0.01em]">
             DMS
           </Link>
@@ -36,7 +62,7 @@ export default function AppShell() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pb-24 sm:px-8">
+      <main className="px-4 pb-16 sm:px-6 lg:px-8">
         <Outlet />
       </main>
     </div>

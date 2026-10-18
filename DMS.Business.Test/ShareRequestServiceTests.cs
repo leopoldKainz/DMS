@@ -48,7 +48,7 @@ public class ShareRequestServiceTests
     private ShareRequestService CreateService() => new(_mockContext.Object, NullLogger<ShareRequestService>.Instance);
 
     [Test]
-    public async Task CreateAsync_OwnerSharesDocument_AddsRequestAndSaves()
+    public async Task CreateAsync_OwnerSharesDocument_AddsRequestWithoutSaving()
     {
         var service = CreateService();
 
@@ -58,7 +58,7 @@ public class ShareRequestServiceTests
         Assert.That(result.Reciever, Is.SameAs(_reciever));
         Assert.That(result.Document, Is.SameAs(_document));
         _mockShareRequests.Verify(s => s.AddAsync(result, It.IsAny<CancellationToken>()), Times.Once);
-        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -80,7 +80,7 @@ public class ShareRequestServiceTests
     }
 
     [Test]
-    public async Task AcceptAsync_GrantsAccessAndRemovesRequestInOneSave()
+    public async Task AcceptAsync_GrantsAccessAndRemovesRequest()
     {
         var service = CreateService();
 
@@ -91,7 +91,7 @@ public class ShareRequestServiceTests
             It.Is<UserDocument>(ud => ud.UserId == 3 && ud.DocumentId == 10 && ud.Permission == Permission.User),
             It.IsAny<CancellationToken>()), Times.Once);
         _mockShareRequests.Verify(s => s.Remove(_pendingRequest), Times.Once);
-        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]

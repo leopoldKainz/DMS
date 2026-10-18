@@ -82,7 +82,6 @@ public class ShareRequestService : BaseService<ShareRequest>, IShareRequestServi
         };
 
         await _dbSet.AddAsync(shareRequest, ct);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Share request {ShareRequestId} created: document {DocumentId} from {OwnerId} to {RecieverId}",
             shareRequest.EntityId, documentId, ownerId, recieverId);
@@ -123,7 +122,6 @@ public class ShareRequestService : BaseService<ShareRequest>, IShareRequestServi
         }
 
         _dbSet.Remove(shareRequest);
-        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Share request {ShareRequestId} accepted: user {UserId} got {Permission} on document {DocumentId}",
             shareRequestId, reciever.EntityId, permission, document.EntityId);

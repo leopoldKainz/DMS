@@ -1,19 +1,31 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { uploadDocuments } from '../api/documents'
 
 const MAX_BYTES = 50 * 1024 * 1024
 
 interface Props {
   onUploaded: () => void
+  className?: string
 }
 
-// Drop area at the foot of the document panel; also opens the file picker.
-export default function UploadField({ onUploaded }: Props) {
+export default function UploadField({ onUploaded, className = '' }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const dragDepth = useRef(0)
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    function block(e: globalThis.DragEvent) {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault()
+    }
+    window.addEventListener('dragover', block)
+    window.addEventListener('drop', block)
+    return () => {
+      window.removeEventListener('dragover', block)
+      window.removeEventListener('drop', block)
+    }
+  }, [])
 
   function validate(files: File[]): string | null {
     if (files.length === 0) return 'Keine Datei ausgewählt.'
@@ -81,9 +93,9 @@ export default function UploadField({ onUploaded }: Props) {
       onDragOver={(e) => e.preventDefault()}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`border-t border-dashed px-5 py-6 text-center transition-colors motion-reduce:transition-none ${
-        over ? 'border-mappe bg-mappe/8' : 'border-linie'
-      }`}
+      className={`rounded-[6px] border border-dashed px-4 py-6 text-center transition-colors motion-reduce:transition-none ${
+        over ? 'border-mappe bg-mappe/8' : 'border-bleistift/40'
+      } ${className}`}
     >
       <p className={`text-[15px] ${over ? 'font-medium text-mappe' : 'text-bleistift'}`}>
         {prompt}
