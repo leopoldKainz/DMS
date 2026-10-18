@@ -1,9 +1,11 @@
 using DMS.API.Auth;
 using DMS.Business.Interfaces;
+using DMS.Business.Models;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
 using Mapster;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,12 +19,14 @@ public class DocumentController : ControllerBase
     private const long MaxUploadBytes = 50L * 1024 * 1024;
 
     private readonly IDocumentService _documentService;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly IUnitOfWork _unitOfWork;
-
-    public DocumentController(IDocumentService documentService, IUnitOfWork unitOfWork)
+    
+    public DocumentController(IDocumentService documentService, IUnitOfWork unitOfWork, IPublishEndpoint publishEndpoint)
     {
         _documentService = documentService;
         _unitOfWork = unitOfWork;
+        _publishEndpoint = publishEndpoint;
     }
 
     [HttpPost("upload")]
@@ -55,6 +59,12 @@ public class DocumentController : ControllerBase
             };
 
             createdDocuments.Add(await _documentService.AddForOwnerAsync(userId, document));
+            
+            await _publishEndpoint.Publish(new ProcessOcrDocument
+            {
+                JobId = Guid.NewGuid(),
+                DocumentId = document.EntityId,
+            });
         }
 
         await _unitOfWork.SaveChangesAsync();

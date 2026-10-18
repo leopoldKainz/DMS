@@ -2,12 +2,14 @@ using System.Text;
 using DMS.API.Auth;
 using DMS.API.Filters;
 using DMS.Business.Interfaces;
+using DMS.Business.Models;
 using DMS.Business.Models.Validation;
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.DTOs;
 using FluentValidation;
 using Mapster;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,7 +23,7 @@ namespace DMS.API
         {
             var builder = WebApplication.CreateBuilder(args);
             
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             builder.Services.AddDbContext<DmsDbContext>(options =>
             {
                 options.UseNpgsql(connectionString);
@@ -84,6 +86,20 @@ namespace DMS.API
                         new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }
                     ];
                     return Task.CompletedTask;
+                });
+            });
+            
+            builder.Services.AddMassTransit(x =>
+            {
+                x.AddConsumer<OcrWorkerConsumer>();
+
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    var connectionString = builder.Configuration.GetConnectionString("RabbitMq") 
+                                           ?? throw new InvalidOperationException("RabbitMQ connection string is missing.");
+
+                    cfg.Host(connectionString);
+                    cfg.ConfigureEndpoints(context);
                 });
             });
 
