@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
-    name: Build & Test
+  build-and-test-backend:
+    name: Build & Test Backend
     runs-on: ubuntu-latest
 
     steps:
@@ -29,3 +29,31 @@ jobs:
 
       - name: Run tests
         run: dotnet test DMS.slnx --no-build --configuration Release --verbosity normal
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./DMS.Web
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: ./DMS.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React app
+        run: npm run build
+      
+      # TODO: Add test step for frontend when tests are implemented
+      # - name: Run tests
+      #   run: npm test -- --watchAll=false
