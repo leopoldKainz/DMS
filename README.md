@@ -205,6 +205,12 @@ The CI pipeline ([`.github/workflows/ci.yaml`](.github/workflows/ci.yaml)) runs 
 
 We work with feature branches and merge everything into `main` through pull requests once the CI is green.
 
+Our team's hours spent:
+- Birdi Rohit: ~39
+- Kainz Leopold: ~41
+- Mikulovic Luka: ~45
+
+
 What has been done so far:
 
 - Docker Compose setup and env example (#8)
