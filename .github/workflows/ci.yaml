@@ -24,6 +24,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore DMS.slnx
 
+      - name: Check code formatting (Lint)
+        run: dotnet format DMS.slnx --verify-no-changes
+
       - name: Build solution
         run: dotnet build DMS.slnx --no-restore --configuration Release
 
@@ -51,13 +54,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint React app
+        run: npm run lint
+
       - name: Build React app
         run: npm run build
       
       # TODO: Add test step for frontend when tests are implemented
       # - name: Run tests
       #   run: npm test -- --watchAll=false
-      
+  
   ci-complete:
     needs: [ build-and-test-backend, build-frontend ]
     runs-on: ubuntu-latest
