@@ -22,13 +22,11 @@ namespace DMS.API
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             builder.Services.AddDbContext<DmsDbContext>(options =>
             {
                 options.UseNpgsql(connectionString);
             });
-            
             var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
             var jwtOptions = jwtSection.Get<JwtOptions>()
                 ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
@@ -88,16 +86,14 @@ namespace DMS.API
                     return Task.CompletedTask;
                 });
             });
-            
             builder.Services.AddMassTransit(x =>
             {
                 x.AddConsumer<OcrWorkerConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    var connectionString = builder.Configuration.GetConnectionString("RabbitMq") 
+                    var connectionString = builder.Configuration.GetConnectionString("RabbitMq")
                                            ?? throw new InvalidOperationException("RabbitMQ connection string is missing.");
-
                     cfg.Host(connectionString);
                     cfg.ConfigureEndpoints(context);
                 });
@@ -108,7 +104,6 @@ namespace DMS.API
             var app = builder.Build();
             app.UseExceptionHandler();
 
-           
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
