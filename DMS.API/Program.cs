@@ -103,6 +103,8 @@ namespace DMS.API
                 });
             });
 
+            builder.Services.AddHealthChecks();
+
             var app = builder.Build();
             app.UseExceptionHandler();
 
@@ -120,6 +122,7 @@ namespace DMS.API
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+            app.MapHealthChecks("/health");
 
             app.Run();
         }
