@@ -34,7 +34,7 @@ public class DocumentControllerTests
         _mockPublishEndpoint = new Mock<IPublishEndpoint>();
         _userGuid = Guid.NewGuid();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _controller = new DocumentController(_mockService.Object, _mockUnitOfWork.Object , _mockPublishEndpoint.Object)
+        _controller = new DocumentController(_mockService.Object, _mockUnitOfWork.Object, _mockPublishEndpoint.Object)
         {
             ControllerContext = new ControllerContext
             {

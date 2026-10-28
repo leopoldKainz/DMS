@@ -21,7 +21,7 @@ public class DocumentController : ControllerBase
     private readonly IDocumentService _documentService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IUnitOfWork _unitOfWork;
-    
+
     public DocumentController(IDocumentService documentService, IUnitOfWork unitOfWork, IPublishEndpoint publishEndpoint)
     {
         _documentService = documentService;
@@ -59,7 +59,7 @@ public class DocumentController : ControllerBase
             };
 
             createdDocuments.Add(await _documentService.AddForOwnerAsync(userId, document));
-            
+
             await _publishEndpoint.Publish(new ProcessOcrDocument
             {
                 JobId = Guid.NewGuid(),
