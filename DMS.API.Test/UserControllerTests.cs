@@ -45,7 +45,7 @@ public class UserControllerTests
             }
         };
     }
-    
+
     [Test]
     public async Task Register_ValidUser_ReturnsCreated()
     {
@@ -99,7 +99,7 @@ public class UserControllerTests
         // Assert
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
     }
-    
+
     [Test]
     public async Task Login_ValidCredentials_ReturnsOkWithTokenAndUser()
     {
@@ -150,7 +150,7 @@ public class UserControllerTests
         // Assert
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
     }
-    
+
     [Test]
     public async Task GetById_ExistingId_ReturnsOkWithUser()
     {
@@ -183,7 +183,7 @@ public class UserControllerTests
         // Assert
         Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
     }
-    
+
     [Test]
     public async Task GetAll_UsersExist_ReturnsOkWithUsers()
     {
@@ -220,7 +220,7 @@ public class UserControllerTests
         var dtos = ok!.Value as List<UserDto>;
         Assert.That(dtos, Is.Empty);
     }
-    
+
     [Test]
     public async Task GetByUsername_ExistingUsername_ReturnsOkWithUser()
     {
@@ -252,7 +252,7 @@ public class UserControllerTests
         // Assert
         Assert.That(result.Result, Is.InstanceOf<NotFoundObjectResult>());
     }
-    
+
     [Test]
     public async Task GetByEmail_ExistingEmail_ReturnsOkWithUser()
     {
