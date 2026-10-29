@@ -1,8 +1,6 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: smo11h/dms-api:latest
     ports:
       - "8080:8080"
     depends_on:
@@ -27,7 +25,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./drawSQL-pgsql-export-2026-09-24.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,8 +33,7 @@ services:
       - .env
 
   web:
-    build:
-      context: ./DMS.Web
+    image: smo11h/dms-web:latest
     ports:
       - "80:80"
     depends_on:
