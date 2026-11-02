@@ -27,6 +27,9 @@ public class MappingConfig : IRegister
             .Map(dest => dest.Permission, src => src.Permission.ToString());
 
         config.NewConfig<ShareRequest, ShareRequestDto>()
-            .Map(dest => dest.Id, src => src.EntityId);
+            .Map(dest => dest.Id, src => src.EntityId)
+            .Map(dest => dest.OwnerId, src => src.Owner != null ? src.Owner.EntityId : Guid.Empty)
+            .Map(dest => dest.RecieverId, src => src.Reciever != null ? src.Reciever.EntityId : Guid.Empty)
+            .Map(dest => dest.DocumentId, src => src.Document != null ? src.Document.EntityId : Guid.Empty);
     }
 }
