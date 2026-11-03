@@ -10,6 +10,7 @@ DMS is a document management system we are building as a semester project. Users
 - Look up users by ID, username or email
 - Swagger UI for the API
 - Share requests and document permissions are already implemented in the business layer, but not yet available through the API
+- RabbitMQ messaging with 2 channels: request channel for OCR jobs and response channel for completed OCR results
 - OCR worker is connected to RabbitMQ, but the actual OCR part is still missing
 
 ## Tech stack
@@ -30,7 +31,7 @@ The backend is split into layers. Each project only knows about the layer below 
 - `DMS.Web` is the React frontend. nginx serves it and forwards everything under `/api/*` to the API.
 - `DMS.API` contains the controllers, JWT authentication, a validation filter and the global exception handler. All dependencies are registered in `Program.cs`.
 - `DMS.Business` contains the services (`DocumentService`, `UserService`, `ShareRequestService`, `UserDocumentService`) and the `UnitOfWork`.
-- `DMS.Business.Models` holds the DTOs, validators, the Mapster config and the RabbitMQ message and consumer.
+- `DMS.Business.Models` holds the DTOs, validators, the Mapster config and the RabbitMQ messages and consumers (`OcrWorkerConsumer`, `OcrResponseConsumer`).
 - `DMS.DAL` holds the `DmsDbContext`, the entities and the EF Core configurations.
 - `DMS.API.Test`, `DMS.Business.Test` and `DMS.DAL.Test` are the test projects.
 
@@ -41,8 +42,10 @@ flowchart LR
     API --> Business[DMS.Business]
     Business --> DAL[DMS.DAL]
     DAL --> DB[(PostgreSQL)]
-    API -- ProcessOcrDocument --> MQ[[RabbitMQ]]
-    MQ --> OCR[OcrWorkerConsumer]
+    API -- ProcessOcrDocument --> Q1[["RabbitMQ: ocr-request-queue"]]
+    Q1 --> OCR[OcrWorkerConsumer]
+    OCR -- ProcessOcrDocumentResponse --> Q2[["RabbitMQ: ocr-response-queue"]]
+    Q2 --> RES[OcrResponseConsumer]
 ```
 
 A typical request goes like this: the controller gets a DTO, the `ValidationFilter` validates it, the service does the actual work on the entities and at the end `UnitOfWork.SaveChangesAsync()` saves everything in one go. The result is mapped back to a DTO with Mapster. If something goes wrong, the service throws an exception and the `GlobalExceptionHandler` turns it into a `ProblemDetails` response.
@@ -58,26 +61,26 @@ erDiagram
     DOCUMENT ||--o{ SHARE_REQUEST : "shared in"
 ```
 
-`UserDocument` is the join table between users and documents and stores the permission (`Owner` or `User`). We designed the schema in drawSQL, the export (`drawSQL-pgsql-export-2026-09-24.sql`) is loaded automatically when the database container starts for the first time.
-
-### Upload
-
-```mermaid
+`UserDocument` is the join table between users and documents and stores the permission (`Owner` or `User`). We designed the schema in drawSQL, the export (`drawSQL-pgsql-export-2026-09-24.sql`) is loaded automatically when the database container starts for the first time.\n\n### Upload\n\n```mermaid
 sequenceDiagram
     actor U as User
     participant A as DocumentController
     participant S as DocumentService
-    participant Q as RabbitMQ
+    participant Q1 as RabbitMQ (ocr-request-queue)
     participant O as OcrWorkerConsumer
+    participant Q2 as RabbitMQ (ocr-response-queue)
+    participant R as OcrResponseConsumer
 
     U->>A: POST /Document/upload
     loop each file
         A->>S: AddForOwnerAsync
-        A->>Q: publish ProcessOcrDocument
+        A->>Q1: publish ProcessOcrDocument
     end
     A->>A: SaveChangesAsync
     A-->>U: list of DocumentDto
-    Q->>O: consume (async)
+    Q1->>O: consume ProcessOcrDocument (async)
+    O->>Q2: publish ProcessOcrDocumentResponse
+    Q2->>R: consume ProcessOcrDocumentResponse (async)
 ```
 
 ## Design decisions
@@ -99,7 +102,7 @@ For errors there is one global exception handler. The services just throw except
 
 Login uses JWT because the frontend is a separate app and we didn't want server-side sessions. Passwords are hashed with PBKDF2 (SHA-256, 600,000 iterations) from the .NET crypto library, so no extra package was needed. The hash has a version prefix, which means we can change the parameters later and old hashes get updated on the next login.
 
-OCR takes time, so it shouldn't block the upload. That's why the API only publishes a message to RabbitMQ (via MassTransit) and the consumer handles it in the background.
+OCR takes time, so it shouldn't block the upload. That's why the API publishes a message to RabbitMQ on the request channel (`ocr-request-queue`). The worker handles it asynchronously in the background and posts the processing result back to a dedicated response channel (`ocr-response-queue`), where `OcrResponseConsumer` receives it.
 
 Because nginx proxies `/api` to the backend, frontend and API run under the same origin and we don't need any CORS setup.
 
@@ -119,6 +122,7 @@ POSTGRES_DB=dms
 POSTGRES_USER=dms
 POSTGRES_PASSWORD=dms_password
 ASPNETCORE_ENVIRONMENT=Development
+Jwt__Key=dms_development_secret_key_must_be_at_least_32_bytes_long!
 ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=dms;Username=dms;Password=dms_password
 RABBITMQ_DEFAULT_USER=rabbitmq
 RABBITMQ_DEFAULT_PASS=rabbitmq_password
@@ -190,47 +194,4 @@ dotnet test DMS.slnx
 
 Besides that we test the API by hand with Swagger and Postman and click through the web UI.
 
-The CI pipeline ([`.github/workflows/ci.yaml`](.github/workflows/ci.yaml)) runs on every push and pull request to `main`. It builds the backend and runs the tests, and in a second job it builds the frontend. The `ci-complete` job only passes when both jobs passed, so we only need one required check in the branch protection rules.
-
-## Lessons learned
-
-- Switching from int IDs to GUIDs late in the project meant changing controllers, services, DTOs and tests at the same time. Next time we would decide this at the start.
-- At the beginning, config and secrets were spread between `appsettings` and the compose file. With the env files it's now in one place and it's clear what is local and what isn't.
-- Mocking EF Core is harder than expected. Async LINQ queries didn't work with plain Moq, we needed MockQueryable for that.
-- Without a health check in Docker Compose the API sometimes started before RabbitMQ or Postgres were ready and crashed.
-- Small feature branches with pull requests worked well for us. Reviews were faster and we had fewer merge conflicts.
-- The CI caught a few broken builds and failing tests before they ended up on `main`.
-
-## Tracked work
-
-We work with feature branches and merge everything into `main` through pull requests once the CI is green.
-
-Our team's hours spent:
-- Birdi Rohit: ~39
-- Kainz Leopold: ~41
-- Mikulovic Luka: ~45
-
-
-What has been done so far:
-
-- Docker Compose setup and env example (#8)
-- Test projects (#9)
-- CI pipeline (#10)
-- DAL and Unit of Work (#11)
-- DTOs and mapping (#12)
-- Controllers, services and Postman collection (#13, #14)
-- Unit tests for API, Business and DAL (#15)
-- First frontend design (#22)
-- DTO validation and GUIDs instead of int IDs (#23)
-- JWT authentication with login/register in the frontend (#24)
-- Logging, dashboard improvements and more tests (#25)
-- Exception handling, frontend and business layer changes (#26)
-- RabbitMQ/MassTransit for OCR, env files, frontend build in CI (#28)
-
-Still open:
-
-- actual OCR processing in `OcrWorkerConsumer` (right now it only logs)
-- storing the file content (right now only metadata is saved)
-- share requests in the API and the UI
-- frontend tests and the test step in the CI
-- tests for `DMS.DAL.Test`
+The CI pipeline ([`.github/workflows/ci.yaml`](.github/workflows/ci.yaml)) runs on every push and pull request to `main`. It builds the backend and runs the tests, and in a second job it builds the frontend. The `ci-complete` job only passes when both jobs passed, so we only need one required check in the branch protection rules.\n\n## Lessons learned\n\n- Switching from int IDs to GUIDs late in the project meant changing controllers, services, DTOs and tests at the same time. Next time we would decide this at the start.\n- At the beginning, config and secrets were spread between `appsettings` and the compose file. With the env files it's now in one place and it's clear what is local and what isn't.\n- Mocking EF Core is harder than expected. Async LINQ queries didn't work with plain Moq, we needed MockQueryable for that.\n- Without a health check in Docker Compose the API sometimes started before RabbitMQ or Postgres were ready and crashed.\n- Small feature branches with pull requests worked well for us. Reviews were faster and we had fewer merge conflicts.\n- The CI caught a few broken builds and failing tests before they ended up on `main` reconsidering dependencies.\n\n## Tracked work\n\nWe work with feature branches and merge everything into `main` through pull requests once the CI is green.\n\nOur team's hours spent:\n- Birdi Rohit: ~39\n- Kainz Leopold: ~41\n- Mikulovic Luka: ~45\n\n\nWhat has been done so far:\n\n- Docker Compose setup and env example (#8)\n- Test projects (#9)\n- CI pipeline (#10)\n- DAL and Unit of Work (#11)\n- DTOs and mapping (#12)\n- Controllers, services and Postman collection (#13, #14)\n- Unit tests for API, Business and DAL (#15)\n- First frontend design (#22)\n- DTO validation and GUIDs instead of int IDs (#23)\n- JWT authentication with login/register in the frontend (#24)\n- Logging, dashboard improvements and more tests (#25)\n- Exception handling, frontend and business layer changes (#26)\n- RabbitMQ/MassTransit for OCR, env files, frontend build in CI (#28)\n- 2 RabbitMQ channels/queues (OCR request & OCR response) integrated\n\nStill open:\n\n- actual OCR processing in `OcrWorkerConsumer` (right now it only logs and returns simulated text)\n- storing the file content (right now only metadata is saved)\n- share requests in the API and the UI\n- frontend tests and the test step in the CI\n- tests for `DMS.DAL.Test`\n

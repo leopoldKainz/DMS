@@ -10,7 +10,7 @@
 
     - name: Install Docker and Docker Compose plugin
       apt:
-        name: [docker.io, docker-compose-plugin]
+        name: [ docker.io, docker-compose-v2 ]
         state: present
 
     - name: Ensure Docker service is running
@@ -24,16 +24,16 @@
         path: /opt/DMS
         state: directory
 
-- name: Copy deployment files to server
-    copy:
-      src: "{{ item }}"
-      dest: /opt/DMS/
-    loop:
-      - ./docker-compose.yml
-      - ./.env
-      - ./drawSQL-pgsql-export-2026-09-24.sql
+    - name: Copy deployment files to server
+      copy:
+        src: "{{ item }}"
+        dest: /opt/DMS/
+      loop:
+        - ./docker-compose.yml
+        - ./.env
+        - ./drawSQL-pgsql-export-2026-09-24.sql
 
     - name: Pull latest image and start Docker Compose
-      command: docker compose --env-file .env.local up -d --pull always
+      command: docker compose up -d --pull always
       args:
         chdir: /opt/DMS/

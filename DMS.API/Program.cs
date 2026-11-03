@@ -30,6 +30,10 @@ namespace DMS.API
             var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
             var jwtOptions = jwtSection.Get<JwtOptions>()
                 ?? throw new InvalidOperationException("Missing 'Jwt' configuration section.");
+            if (string.IsNullOrWhiteSpace(jwtOptions.Key) || Encoding.UTF8.GetByteCount(jwtOptions.Key) < 32)
+            {
+                throw new InvalidOperationException("JWT signing key ('Jwt:Key' or 'Jwt__Key') must be at least 256 bits (32 bytes).");
+            }
             builder.Services.Configure<JwtOptions>(jwtSection);
             builder.Services.AddSingleton<ITokenService, TokenService>();
 
@@ -89,13 +93,25 @@ namespace DMS.API
             builder.Services.AddMassTransit(x =>
             {
                 x.AddConsumer<OcrWorkerConsumer>();
+                x.AddConsumer<OcrResponseConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     var connectionString = builder.Configuration.GetConnectionString("RabbitMq")
                                            ?? throw new InvalidOperationException("RabbitMQ connection string is missing.");
                     cfg.Host(connectionString);
-                    cfg.ConfigureEndpoints(context);
+
+                    // Channel 1: OCR Request Channel
+                    cfg.ReceiveEndpoint(RabbitMqConstants.OcrRequestQueue, endpoint =>
+                    {
+                        endpoint.ConfigureConsumer<OcrWorkerConsumer>(context);
+                    });
+
+                    // Channel 2: OCR Response Channel
+                    cfg.ReceiveEndpoint(RabbitMqConstants.OcrResponseQueue, endpoint =>
+                    {
+                        endpoint.ConfigureConsumer<OcrResponseConsumer>(context);
+                    });
                 });
             });
 
