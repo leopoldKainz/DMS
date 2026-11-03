@@ -1,3 +1,4 @@
+using DMS.Business.Exceptions;
 using DMS.Business.Interfaces;
 using DMS.DAL;
 using DMS.DAL.Entities;
@@ -50,28 +51,28 @@ public class ShareRequestService : BaseService<ShareRequest>, IShareRequestServi
         }
 
         var owner = await _context.Users.FirstOrDefaultAsync(u => u.EntityId == ownerId, ct)
-            ?? throw new ArgumentException($"User with ID {ownerId} not found.", nameof(ownerId));
+            ?? throw new NotFoundException($"User with ID {ownerId} not found.");
         var reciever = await _context.Users.FirstOrDefaultAsync(u => u.EntityId == recieverId, ct)
-            ?? throw new ArgumentException($"User with ID {recieverId} not found.", nameof(recieverId));
+            ?? throw new NotFoundException($"User with ID {recieverId} not found.");
         var document = await _context.Documents.FirstOrDefaultAsync(d => d.EntityId == documentId, ct)
-            ?? throw new ArgumentException($"Document with ID {documentId} not found.", nameof(documentId));
+            ?? throw new NotFoundException($"Document with ID {documentId} not found.");
 
         var isOwner = await _context.UserDocuments
             .AnyAsync(ud => ud.UserId == owner.Id && ud.DocumentId == document.Id && ud.Permission == Permission.Owner, ct);
         if (!isOwner)
         {
             _logger.LogWarning("User {UserId} tried to share document {DocumentId} without being its owner", ownerId, documentId);
-            throw new UnauthorizedAccessException($"User {ownerId} is not the owner of document {documentId}.");
+            throw new ForbiddenException($"User {ownerId} is not the owner of document {documentId}.");
         }
 
         if (await _context.UserDocuments.AnyAsync(ud => ud.UserId == reciever.Id && ud.DocumentId == document.Id, ct))
         {
-            throw new ArgumentException($"User {recieverId} already has access to document {documentId}.");
+            throw new ConflictException($"User {recieverId} already has access to document {documentId}.");
         }
 
         if (await ExistsAsync(ownerId, recieverId, documentId, ct))
         {
-            throw new ArgumentException("This share request already exists.");
+            throw new ConflictException("This share request already exists.");
         }
 
         var shareRequest = new ShareRequest

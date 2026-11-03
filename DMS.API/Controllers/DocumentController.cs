@@ -1,4 +1,5 @@
 using DMS.API.Auth;
+using DMS.Business.Exceptions;
 using DMS.Business.Interfaces;
 using DMS.Business.Models;
 using DMS.DAL.DTOs;
@@ -59,15 +60,25 @@ public class DocumentController : ControllerBase
             };
 
             createdDocuments.Add(await _documentService.AddForOwnerAsync(userId, document));
-
-            await _publishEndpoint.Publish(new ProcessOcrDocument
-            {
-                JobId = Guid.NewGuid(),
-                DocumentId = document.EntityId,
-            });
         }
 
         await _unitOfWork.SaveChangesAsync();
+
+        foreach (var document in createdDocuments)
+        {
+            try
+            {
+                await _publishEndpoint.Publish(new ProcessOcrDocument
+                {
+                    JobId = Guid.NewGuid(),
+                    DocumentId = document.EntityId,
+                });
+            }
+            catch (Exception ex)
+            {
+                throw new MessagingException($"Could not queue OCR job for document {document.EntityId}.", ex);
+            }
+        }
 
         return Ok(createdDocuments.Adapt<List<DocumentDto>>());
     }

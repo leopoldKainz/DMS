@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using DMS.API.Controllers;
+using DMS.Business.Exceptions;
 using DMS.Business.Interfaces;
+using DMS.Business.Models;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
@@ -132,6 +134,24 @@ public class DocumentControllerTests
 
         // Assert
         Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+    }
+
+    [Test]
+    public void Upload_QueueUnavailable_SavesDocumentAndThrowsMessagingException()
+    {
+        // Arrange
+        var file = new Mock<IFormFile>();
+        file.Setup(f => f.FileName).Returns("invoice.pdf");
+        file.Setup(f => f.Length).Returns(100);
+        _mockService.Setup(s => s.AddForOwnerAsync(_userGuid, It.IsAny<Document>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((Guid _, Document d, CancellationToken _) => d);
+        _mockPublishEndpoint.Setup(p => p.Publish(It.IsAny<ProcessOcrDocument>(), It.IsAny<CancellationToken>()))
+                            .ThrowsAsync(new InvalidOperationException("RabbitMQ is down"));
+
+        // Act + Assert
+        var ex = Assert.ThrowsAsync<MessagingException>(() => _controller.UploadMultipleFiles(new List<IFormFile> { file.Object }));
+        Assert.That(ex!.InnerException, Is.InstanceOf<InvalidOperationException>());
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // --- GetAll ---

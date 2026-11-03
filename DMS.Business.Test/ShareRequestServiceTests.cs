@@ -1,3 +1,4 @@
+using DMS.Business.Exceptions;
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.Entities;
@@ -62,20 +63,20 @@ public class ShareRequestServiceTests
     }
 
     [Test]
-    public void CreateAsync_NotOwner_ThrowsUnauthorizedAccessException()
+    public void CreateAsync_NotOwner_ThrowsForbiddenException()
     {
         var service = CreateService();
 
-        Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.CreateAsync(_reciever.EntityId, _owner.EntityId, _document.EntityId));
+        Assert.ThrowsAsync<ForbiddenException>(() => service.CreateAsync(_reciever.EntityId, _owner.EntityId, _document.EntityId));
         _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
-    public void CreateAsync_DuplicateRequest_ThrowsArgumentException()
+    public void CreateAsync_DuplicateRequest_ThrowsConflictException()
     {
         var service = CreateService();
 
-        Assert.ThrowsAsync<ArgumentException>(() => service.CreateAsync(_owner.EntityId, _other.EntityId, _document.EntityId));
+        Assert.ThrowsAsync<ConflictException>(() => service.CreateAsync(_owner.EntityId, _other.EntityId, _document.EntityId));
         _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

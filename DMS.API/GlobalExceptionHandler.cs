@@ -1,3 +1,6 @@
+using DMS.API.Exceptions;
+using DMS.Business.Exceptions;
+using DMS.DAL.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -18,10 +21,10 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
-
         if (exception is ValidationException validationException)
         {
+            _logger.LogWarning("Validation failed: {Message}", exception.Message);
+
             var errors = validationException.Errors
                 .GroupBy(e => e.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
@@ -38,19 +41,32 @@ public class GlobalExceptionHandler : IExceptionHandler
             return true;
         }
 
-        var (statusCode, title) = exception switch
+        var (statusCode, title, detail) = exception switch
         {
-            ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request"),
-            KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
-            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
-            _ => (StatusCodes.Status500InternalServerError, "Server error")
+            NotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
+            ConflictException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),
+            ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden", exception.Message),
+            UnauthorizedException => (StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message),
+            ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", exception.Message),
+            DataAccessException => (StatusCodes.Status500InternalServerError, "Database Error", "A database error occurred."),
+            MessagingException => (StatusCodes.Status503ServiceUnavailable, "Service Unavailable", "The document processing queue is currently unavailable."),
+            _ => (StatusCodes.Status500InternalServerError, "Server error", "An unexpected error occurred.")
         };
+
+        if (statusCode >= StatusCodes.Status500InternalServerError)
+        {
+            _logger.LogError(exception, "Request failed with {StatusCode}: {Message}", statusCode, exception.Message);
+        }
+        else
+        {
+            _logger.LogWarning("Request failed with {StatusCode}: {Message}", statusCode, exception.Message);
+        }
 
         var problemDetails = new ProblemDetails
         {
             Status = statusCode,
             Title = title,
-            Detail = exception.Message
+            Detail = detail
         };
 
         httpContext.Response.StatusCode = statusCode;
