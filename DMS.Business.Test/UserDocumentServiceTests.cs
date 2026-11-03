@@ -1,3 +1,4 @@
+using DMS.Business.Exceptions;
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.Entities;
@@ -51,20 +52,20 @@ public class UserDocumentServiceTests
     }
 
     [Test]
-    public void GrantAsync_ExistingLink_ThrowsArgumentException()
+    public void GrantAsync_ExistingLink_ThrowsConflictException()
     {
         var service = CreateService();
 
-        Assert.ThrowsAsync<ArgumentException>(() => service.GrantAsync(_max.EntityId, _document.EntityId, Permission.User));
+        Assert.ThrowsAsync<ConflictException>(() => service.GrantAsync(_max.EntityId, _document.EntityId, Permission.User));
         _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
-    public void GrantAsync_UnknownUser_ThrowsArgumentException()
+    public void GrantAsync_UnknownUser_ThrowsNotFoundException()
     {
         var service = CreateService();
 
-        Assert.ThrowsAsync<ArgumentException>(() => service.GrantAsync(Guid.NewGuid(), _document.EntityId, Permission.User));
+        Assert.ThrowsAsync<NotFoundException>(() => service.GrantAsync(Guid.NewGuid(), _document.EntityId, Permission.User));
         _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

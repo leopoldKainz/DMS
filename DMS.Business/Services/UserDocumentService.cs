@@ -1,3 +1,4 @@
+using DMS.Business.Exceptions;
 using DMS.Business.Interfaces;
 using DMS.DAL;
 using DMS.DAL.Entities;
@@ -57,13 +58,13 @@ public class UserDocumentService : IUserDocumentService
     public async Task<UserDocument> GrantAsync(Guid userId, Guid documentId, Permission permission, CancellationToken ct = default)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.EntityId == userId, ct)
-            ?? throw new ArgumentException($"User with ID {userId} not found.", nameof(userId));
+            ?? throw new NotFoundException($"User with ID {userId} not found.");
         var document = await _context.Documents.FirstOrDefaultAsync(d => d.EntityId == documentId, ct)
-            ?? throw new ArgumentException($"Document with ID {documentId} not found.", nameof(documentId));
+            ?? throw new NotFoundException($"Document with ID {documentId} not found.");
 
         if (await _context.UserDocuments.AnyAsync(ud => ud.UserId == user.Id && ud.DocumentId == document.Id, ct))
         {
-            throw new ArgumentException($"User {userId} already has access to document {documentId}.");
+            throw new ConflictException($"User {userId} already has access to document {documentId}.");
         }
 
         var userDocument = new UserDocument

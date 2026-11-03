@@ -1,3 +1,4 @@
+using DMS.Business.Exceptions;
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.Entities;
@@ -70,7 +71,7 @@ public class DocumentServiceTests
     }
 
     [Test]
-    public void AddForOwnerAsync_UnknownUser_ThrowsArgumentException()
+    public void AddForOwnerAsync_UnknownUser_ThrowsNotFoundException()
     {
         // Arrange
         var service = new DocumentService(_mockContext.Object, NullLogger<DocumentService>.Instance);
@@ -78,7 +79,7 @@ public class DocumentServiceTests
         var unknownUserId = Guid.NewGuid();
 
         // Act + Assert
-        Assert.ThrowsAsync<ArgumentException>(() => service.AddForOwnerAsync(unknownUserId, newDocument));
+        Assert.ThrowsAsync<NotFoundException>(() => service.AddForOwnerAsync(unknownUserId, newDocument));
         _mockDocuments.Verify(s => s.AddAsync(It.IsAny<Document>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

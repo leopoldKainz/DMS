@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using DMS.API.Exceptions;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace DMS.API.Auth;
@@ -10,7 +11,7 @@ public static class ClaimsPrincipalExtensions
         string? sub = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
         if (!Guid.TryParse(sub, out Guid userId))
         {
-            throw new UnauthorizedAccessException("Authenticated user has no valid 'sub' claim.");
+            throw new UnauthorizedException("Authenticated user has no valid 'sub' claim.");
         }
 
         return userId;

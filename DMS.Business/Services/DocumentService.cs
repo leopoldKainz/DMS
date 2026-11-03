@@ -1,3 +1,4 @@
+using DMS.Business.Exceptions;
 using DMS.Business.Interfaces;
 using DMS.Business.Models.Validation;
 using DMS.DAL;
@@ -73,7 +74,7 @@ public class DocumentService : BaseService<Document>, IDocumentService
         var user = await _context.Users.FirstOrDefaultAsync(u => u.EntityId == ownerUserId, ct);
         if (user == null)
         {
-            throw new ArgumentException($"User with ID {ownerUserId} not found.", nameof(ownerUserId));
+            throw new NotFoundException($"User with ID {ownerUserId} not found.");
         }
 
         var validationResult = await _validator.ValidateAsync(document, ct);

@@ -14,9 +14,17 @@ public class OcrWorkerConsumer : IConsumer<ProcessOcrDocument>
     public async Task Consume(ConsumeContext<ProcessOcrDocument> context)
     {
         var message = context.Message;
-        //TODO: Implement the OCR logic here.
-        _logger.LogInformation($"Starting OCR for Job {message.JobId} using fileID {message.DocumentId}");
-        await Task.Delay(500);
-        _logger.LogInformation($"Successfully completed OCR for Job {message.JobId} using fileID {message.DocumentId}");
+        try
+        {
+            //TODO: Implement the OCR logic here.
+            _logger.LogInformation("Starting OCR for Job {JobId} using fileID {DocumentId}", message.JobId, message.DocumentId);
+            await Task.Delay(500);
+            _logger.LogInformation("Successfully completed OCR for Job {JobId} using fileID {DocumentId}", message.JobId, message.DocumentId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OCR failed for Job {JobId} using fileID {DocumentId}", message.JobId, message.DocumentId);
+            throw;
+        }
     }
 }
