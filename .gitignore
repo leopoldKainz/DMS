@@ -5,8 +5,9 @@
 .env
 .env.local
 *\.idea
+appsettings.Development.json
 
-# Terraform
+# Terraform & Secrets
 **/.terraform/
 *.tfstate
 *.tfstate.*
@@ -22,3 +23,5 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+*.pem
+*.key

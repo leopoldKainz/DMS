@@ -26,6 +26,31 @@ services:
     env_file:
       - .env
 
+  ocr-worker:
+    image: smo11h/dms-ocr:latest
+    build:
+      context: .
+      dockerfile: DMS.OCR/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      RustFS__Endpoint: rustfs:9000
+      RustFS__BucketName: documents
+      Elasticsearch__Url: http://elasticsearch:9200
+      Elasticsearch__IndexName: documents
+      Ocr__GhostscriptPath: gs
+      Ocr__TesseractPath: tesseract
+      Ocr__Language: deu+eng
+      Ocr__Dpi: 300
+      TESSDATA_PREFIX: /usr/share/tesseract-ocr/5/tessdata
+    env_file:
+      - .env
+
   db:
     image: postgres:17
     ports:

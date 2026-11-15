@@ -7,5 +7,7 @@
   <Project Path="DMS.DAL.Test/DMS.DAL.Test.csproj" />
   <Project Path="DMS.DAL/DMS.DAL.csproj" />
   <Project Path="DMS.ELK/DMS.ELK.csproj" />
+  <Project Path="DMS.OCR.Test/DMS.OCR.Test.csproj" />
+  <Project Path="DMS.OCR/DMS.OCR.csproj" />
   <Project Path="DMS.Storage/DMS.Storage.csproj" />
 </Solution>
