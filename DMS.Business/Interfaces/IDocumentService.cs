@@ -7,7 +7,7 @@ public interface IDocumentService : IBaseService<Document>
 {
     Task<IReadOnlyList<Document>> GetByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<Document>> GetByUserAsync(Guid userId, Permission permission, CancellationToken ct = default);
-    Task<IReadOnlyList<Document>> SearchByNameAsync(Guid userId, string searchTerm, CancellationToken ct = default);
+    Task<IReadOnlyList<Document>> SearchAsync(Guid userId, string searchTerm, IReadOnlyCollection<Guid> matchingDocumentIds, CancellationToken ct = default);
     Task<Document?> GetWithUsersAsync(Guid documentId, CancellationToken ct = default);
     Task<Document> AddForOwnerAsync(Guid ownerUserId, Document document, CancellationToken ct = default);
     Task<bool> HasAccessAsync(Guid userId, Guid documentId, CancellationToken ct = default);

@@ -344,14 +344,19 @@ public class DocumentControllerTests
     // --- Search ---
 
     [Test]
-    public async Task Search_MatchingTerm_ReturnsOkWithDocuments()
+    public async Task Search_MatchingTerm_PassesIndexHitsToServiceAndReturnsOk()
     {
-        // Arrange
+        // Arrange: Elasticsearch finds the term inside the document, the service resolves it for the user
+        var docGuid = Guid.NewGuid();
         var docs = new List<Document>
         {
-            new() { Id = 1, EntityId = Guid.NewGuid(), Name = "matching_doc.pdf", Type = "application/pdf", Size = 120 }
+            new() { Id = 1, EntityId = docGuid, Name = "matching_doc.pdf", Type = "application/pdf", Size = 120 }
         };
-        _mockService.Setup(s => s.SearchByNameAsync(_userGuid, "matching", It.IsAny<CancellationToken>())).ReturnsAsync(docs);
+        _mockSearchIndex.Setup(s => s.SearchAsync("matching", It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new List<Guid> { docGuid });
+        _mockService.Setup(s => s.SearchAsync(_userGuid, "matching",
+                                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(docGuid)), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(docs);
 
         // Act
         var result = await _controller.Search("matching");
@@ -361,13 +366,17 @@ public class DocumentControllerTests
         Assert.That(ok, Is.Not.Null);
         var dtos = ok!.Value as List<DocumentDto>;
         Assert.That(dtos, Has.Count.EqualTo(1));
+        Assert.That(dtos![0].Id, Is.EqualTo(docGuid));
+        _mockSearchIndex.Verify(s => s.SearchAsync("matching", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
     public async Task Search_NonMatchingTerm_ReturnsOkWithEmptyList()
     {
         // Arrange
-        _mockService.Setup(s => s.SearchByNameAsync(_userGuid, "nonexistent", It.IsAny<CancellationToken>()))
+        _mockSearchIndex.Setup(s => s.SearchAsync("nonexistent", It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new List<Guid>());
+        _mockService.Setup(s => s.SearchAsync(_userGuid, "nonexistent", It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new List<Document>());
 
         // Act
@@ -378,6 +387,30 @@ public class DocumentControllerTests
         Assert.That(ok, Is.Not.Null);
         var dtos = ok!.Value as List<DocumentDto>;
         Assert.That(dtos, Is.Empty);
+    }
+
+    [Test]
+    public async Task Search_IndexUnavailable_FallsBackToNameSearch()
+    {
+        // Arrange: Elasticsearch is down, the search must still work on document names
+        var docs = new List<Document>
+        {
+            new() { Id = 1, EntityId = Guid.NewGuid(), Name = "invoice.pdf", Type = "application/pdf", Size = 120 }
+        };
+        _mockSearchIndex.Setup(s => s.SearchAsync("invoice", It.IsAny<CancellationToken>()))
+                        .ThrowsAsync(new SearchIndexException("Elasticsearch is down"));
+        _mockService.Setup(s => s.SearchAsync(_userGuid, "invoice",
+                                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(docs);
+
+        // Act
+        var result = await _controller.Search("invoice");
+
+        // Assert
+        var ok = result.Result as OkObjectResult;
+        Assert.That(ok, Is.Not.Null);
+        var dtos = ok!.Value as List<DocumentDto>;
+        Assert.That(dtos, Has.Count.EqualTo(1));
     }
 
     [Test]

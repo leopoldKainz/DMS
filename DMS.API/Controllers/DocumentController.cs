@@ -180,8 +180,26 @@ public class DocumentController : ControllerBase
             return await GetAll();
         }
 
-        IReadOnlyList<Document> documents = await _documentService.SearchByNameAsync(User.GetUserId(), query);
+        Guid userId = User.GetUserId();
+        IReadOnlyList<Guid> indexedDocumentIds = await SearchIndexAsync(query);
+        IReadOnlyList<Document> documents = await _documentService.SearchAsync(userId, query, indexedDocumentIds);
+
+        _logger.LogInformation("Search for '{Query}' by user {UserId}: {IndexHits} index hits, {Total} accessible results",
+            query, userId, indexedDocumentIds.Count, documents.Count);
         return Ok(documents.Adapt<List<DocumentDto>>());
+    }
+
+    private async Task<IReadOnlyList<Guid>> SearchIndexAsync(string query)
+    {
+        try
+        {
+            return await _searchIndex.SearchAsync(query);
+        }
+        catch (SearchIndexException ex)
+        {
+            _logger.LogWarning(ex, "Search index unavailable, falling back to name-only search for '{Query}'", query);
+            return [];
+        }
     }
 
     [HttpDelete("{id:guid}")]
