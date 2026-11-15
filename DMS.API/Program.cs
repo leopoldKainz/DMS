@@ -1,5 +1,6 @@
 using System.Text;
 using DMS.API.Auth;
+using DMS.API.Consumers;
 using DMS.API.Filters;
 using DMS.Business.Interfaces;
 using DMS.Business.Models;
@@ -92,14 +93,17 @@ namespace DMS.API
             });
             builder.Services.AddMassTransit(x =>
             {
-                x.AddConsumer<OcrWorkerConsumer>();
+                x.AddConsumer<OcrResponseConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    var connectionString = builder.Configuration.GetConnectionString("RabbitMq")
+                    var rabbitMqConnectionString = builder.Configuration.GetConnectionString("RabbitMq")
                                            ?? throw new InvalidOperationException("RabbitMQ connection string is missing.");
-                    cfg.Host(connectionString);
-                    cfg.ConfigureEndpoints(context);
+                    cfg.Host(rabbitMqConnectionString);
+                    cfg.ReceiveEndpoint("ocr-response-queue", e =>
+                    {
+                        e.ConfigureConsumer<OcrResponseConsumer>(context);
+                    });
                 });
             });
 

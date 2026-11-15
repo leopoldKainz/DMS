@@ -105,6 +105,7 @@ public class DocumentController : ControllerBase
                 {
                     JobId = Guid.NewGuid(),
                     DocumentId = document.EntityId,
+                    DocumentName = document.Name
                 });
             }
             catch (Exception ex)
