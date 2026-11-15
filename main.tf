@@ -77,7 +77,7 @@ resource "aws_security_group" "app_sg" {
 }
 
 resource "aws_instance" "app_server" {
-    ami           = "ami-0e872aee57663ae2d"
+    ami           = "ami-097d7f07b25dd693"
     instance_type = "t3.small"
     key_name      = aws_key_pair.deployer.key_name
     vpc_security_group_ids = [aws_security_group.app_sg.id]
