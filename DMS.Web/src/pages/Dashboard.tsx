@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import {
   deleteDocument,
   listDocuments,
@@ -107,7 +108,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="grid grid-cols-1 pt-8 [grid-template-areas:'title''search''tabs''list''upload'] lg:grid-cols-[14rem_minmax(0,1fr)] lg:grid-rows-[auto_auto_1fr] lg:[grid-template-areas:'title_search''tabs_list''upload_list'] xl:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:[grid-template-areas:'title_search_search''tabs_list_detail''upload_list_detail'] 2xl:grid-cols-[15rem_minmax(0,1fr)_26rem]">
+    <div className="grid grid-cols-1 pt-8 pb-16 [grid-template-areas:'title''search''tabs''list''upload'] lg:grid-cols-[14rem_minmax(0,1fr)] lg:grid-rows-[auto_auto_1fr] lg:[grid-template-areas:'title_search''tabs_list''upload_list'] xl:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:[grid-template-areas:'title_search_search''tabs_list_detail''upload_list_detail'] 2xl:grid-cols-[15rem_minmax(0,1fr)_26rem]">
       <div className="mb-5 [grid-area:title] lg:mr-6 lg:self-end">
         <h1 className="text-[34px] leading-tight font-semibold">Dokumente</h1>
         <p className="mt-1 text-[15px] text-bleistift lg:text-[14px]">
@@ -182,10 +183,17 @@ export default function Dashboard() {
                   onDelete={() => remove(selected.id)}
                 />
               </div>
+              <Link
+                to={`/documents/${selected.id}`}
+                className="mt-6 inline-block rounded-[4px] bg-mappe px-4 py-2 text-[15px] font-medium text-white hover:brightness-110"
+              >
+                Dokument öffnen
+              </Link>
             </>
           ) : (
             <p className="border-l-4 border-linie py-1 pl-4 text-[15px] text-bleistift">
-              Klick auf einen Dokumentnamen, um es hier anzusehen.
+              Klick auf eine Zeile, um das Dokument hier anzusehen, oder auf den Namen, um es zu
+              öffnen.
             </p>
           )}
         </div>

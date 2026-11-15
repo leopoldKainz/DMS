@@ -7,6 +7,8 @@ using DMS.Business.Models.Validation;
 using DMS.Business.Services;
 using DMS.DAL;
 using DMS.DAL.DTOs;
+using DMS.ELK;
+using DMS.Storage;
 using FluentValidation;
 using Mapster;
 using MassTransit;
@@ -58,6 +60,8 @@ namespace DMS.API
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IUserDocumentService, UserDocumentService>();
             builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
+            builder.Services.AddFileStorage(builder.Configuration);
+            builder.Services.AddSearchIndex(builder.Configuration);
             builder.Services.AddValidatorsFromAssemblyContaining<CreateUserDtoValidator>();
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddProblemDetails();

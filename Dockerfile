@@ -8,6 +8,8 @@ COPY DMS.API/DMS.API.csproj DMS.API/
 COPY DMS.Business/DMS.Business.csproj DMS.Business/
 COPY DMS.Business.Models/DMS.Business.Models.csproj DMS.Business.Models/
 COPY DMS.DAL/DMS.DAL.csproj DMS.DAL/
+COPY DMS.Storage/DMS.Storage.csproj DMS.Storage/
+COPY DMS.ELK/DMS.ELK.csproj DMS.ELK/
 
 # Restore dependencies
 RUN dotnet restore DMS.API/DMS.API.csproj
@@ -17,6 +19,8 @@ COPY DMS.API/ DMS.API/
 COPY DMS.Business/ DMS.Business/
 COPY DMS.Business.Models/ DMS.Business.Models/
 COPY DMS.DAL/ DMS.DAL/
+COPY DMS.Storage/ DMS.Storage/
+COPY DMS.ELK/ DMS.ELK/
 
 # Build and publish
 RUN dotnet publish DMS.API/DMS.API.csproj \

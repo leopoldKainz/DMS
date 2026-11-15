@@ -74,7 +74,8 @@ export default function DocumentsTable({
         {documents.map((doc) => (
           <tr
             key={doc.id}
-            className={`border-b border-linie last:border-b-0 ${
+            onClick={onSelect ? () => onSelect(doc.id) : undefined}
+            className={`border-b border-linie last:border-b-0 ${onSelect ? 'cursor-pointer' : ''} ${
               selectedId === doc.id ? 'bg-ablage' : 'hover:bg-ablage/60'
             }`}
           >
@@ -85,11 +86,6 @@ export default function DocumentsTable({
               <Link
                 to={`/documents/${doc.id}`}
                 aria-current={selectedId === doc.id ? 'true' : undefined}
-                onClick={(e) => {
-                  if (!onSelect || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-                  e.preventDefault()
-                  onSelect(doc.id)
-                }}
                 className="text-[16px] font-medium hover:underline"
               >
                 {doc.name}
