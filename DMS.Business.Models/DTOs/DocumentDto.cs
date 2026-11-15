@@ -6,4 +6,9 @@ public record DocumentDto(
     string Type,
     long Size,
     DateTime CreatedAt
-);
+)
+{
+    public DateTime? UpdatedOn { get; init; }
+    public string OcrStatus { get; init; } = string.Empty;
+    public DocumentMetadataDto Metadata { get; init; } = new(null, null);
+}

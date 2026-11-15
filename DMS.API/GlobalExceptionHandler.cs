@@ -1,6 +1,8 @@
 using DMS.API.Exceptions;
 using DMS.Business.Exceptions;
 using DMS.DAL.Exceptions;
+using DMS.ELK.Exceptions;
+using DMS.Storage.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -50,6 +52,8 @@ public class GlobalExceptionHandler : IExceptionHandler
             ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", exception.Message),
             DataAccessException => (StatusCodes.Status500InternalServerError, "Database Error", "A database error occurred."),
             MessagingException => (StatusCodes.Status503ServiceUnavailable, "Service Unavailable", "The document processing queue is currently unavailable."),
+            StorageException => (StatusCodes.Status503ServiceUnavailable, "Service Unavailable", "The file storage is currently unavailable."),
+            SearchIndexException => (StatusCodes.Status503ServiceUnavailable, "Service Unavailable", "The search index is currently unavailable."),
             _ => (StatusCodes.Status500InternalServerError, "Server error", "An unexpected error occurred.")
         };
 

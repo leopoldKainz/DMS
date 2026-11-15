@@ -71,7 +71,7 @@ async function readError(res: Response): Promise<string> {
   return text
 }
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function send(path: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers)
   const session = getSession()
   if (session) headers.set('Authorization', `Bearer ${session.token}`)
@@ -83,10 +83,20 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     window.location.assign('/login')
   }
   if (!res.ok) throw new ApiError(res.status, await readError(res))
+  return res
+}
+
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await send(path, init)
   if (res.status === 204 || res.headers.get('content-length') === '0') {
     return undefined as T
   }
   return (await res.json()) as T
+}
+
+export async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const res = await send(path, init)
+  return res.blob()
 }
 
 export function query(params: Record<string, string | number | undefined>): string {

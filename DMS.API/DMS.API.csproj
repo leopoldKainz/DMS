@@ -17,6 +17,8 @@
   <ItemGroup>
     <ProjectReference Include="..\DMS.Business.Models\DMS.Business.Models.csproj" />
     <ProjectReference Include="..\DMS.Business\DMS.Business.csproj" />
+    <ProjectReference Include="..\DMS.Storage\DMS.Storage.csproj" />
+    <ProjectReference Include="..\DMS.ELK\DMS.ELK.csproj" />
   </ItemGroup>
 
 </Project>

@@ -14,9 +14,14 @@ CREATE TABLE IF NOT EXISTS "documents"(
     "name" VARCHAR(255) NOT NULL,
     "type" VARCHAR(100) NOT NULL,
     "size" BIGINT NOT NULL,
+    "ocr_status" VARCHAR(20) NOT NULL DEFAULT 'Pending',
+    "metadata" JSONB NOT NULL DEFAULT '{}'::jsonb,
     "created_at" TIMESTAMP(0) WITH TIME ZONE NOT NULL,
     "updated_on" TIMESTAMP(0) WITH TIME ZONE NULL
 );
+
+CREATE INDEX IF NOT EXISTS "documents_ocr_status_index" ON "documents"("ocr_status");
+CREATE INDEX IF NOT EXISTS "documents_metadata_index" ON "documents" USING GIN ("metadata");
 
 CREATE TABLE IF NOT EXISTS "user_documents"(
     "user_id" INTEGER NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,

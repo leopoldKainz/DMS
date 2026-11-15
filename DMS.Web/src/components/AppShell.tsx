@@ -39,8 +39,8 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-linie bg-papier">
+    <div className="flex h-dvh flex-col">
+      <header className="shrink-0 border-b border-linie bg-papier">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
           <Link to="/" className="font-condensed text-[19px] font-semibold tracking-[0.01em]">
             DMS
@@ -62,7 +62,7 @@ export default function AppShell() {
         </div>
       </header>
 
-      <main className="px-4 pb-16 sm:px-6 lg:px-8">
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8">
         <Outlet />
       </main>
     </div>

@@ -5,6 +5,10 @@ using DMS.Business.Models;
 using DMS.DAL.DTOs;
 using DMS.DAL.Entities;
 using DMS.DAL.Enums;
+using DMS.ELK.Exceptions;
+using DMS.ELK.Interfaces;
+using DMS.Storage.Exceptions;
+using DMS.Storage.Interfaces;
 using Mapster;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
@@ -18,16 +22,29 @@ namespace DMS.API.Controllers;
 public class DocumentController : ControllerBase
 {
     private const long MaxUploadBytes = 50L * 1024 * 1024;
+    private const string DefaultContentType = "application/octet-stream";
 
     private readonly IDocumentService _documentService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFileStorage _fileStorage;
+    private readonly ISearchIndex _searchIndex;
+    private readonly ILogger<DocumentController> _logger;
 
-    public DocumentController(IDocumentService documentService, IUnitOfWork unitOfWork, IPublishEndpoint publishEndpoint)
+    public DocumentController(
+        IDocumentService documentService,
+        IUnitOfWork unitOfWork,
+        IPublishEndpoint publishEndpoint,
+        IFileStorage fileStorage,
+        ISearchIndex searchIndex,
+        ILogger<DocumentController> logger)
     {
         _documentService = documentService;
         _unitOfWork = unitOfWork;
         _publishEndpoint = publishEndpoint;
+        _fileStorage = fileStorage;
+        _searchIndex = searchIndex;
+        _logger = logger;
     }
 
     [HttpPost("upload")]
@@ -44,25 +61,41 @@ public class DocumentController : ControllerBase
 
         Guid userId = User.GetUserId();
         var createdDocuments = new List<Document>();
+        var storedDocumentIds = new List<Guid>();
 
-        foreach (var file in files)
+        try
         {
-            if (file.Length == 0)
+            foreach (var file in files)
             {
-                continue;
+                if (file.Length == 0)
+                {
+                    continue;
+                }
+
+                var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? DefaultContentType : file.ContentType;
+                var document = new Document
+                {
+                    Name = Path.GetFileNameWithoutExtension(file.FileName),
+                    Type = Path.GetExtension(file.FileName).TrimStart('.'),
+                    Size = file.Length,
+                    Metadata = new DocumentMetadata { ContentType = contentType }
+                };
+
+                var created = await _documentService.AddForOwnerAsync(userId, document);
+                createdDocuments.Add(created);
+
+                await using var content = file.OpenReadStream();
+                await _fileStorage.UploadAsync(created.EntityId, content, file.Length, contentType);
+                storedDocumentIds.Add(created.EntityId);
             }
 
-            var document = new Document
-            {
-                Name = Path.GetFileNameWithoutExtension(file.FileName),
-                Type = Path.GetExtension(file.FileName).TrimStart('.'),
-                Size = file.Length
-            };
-
-            createdDocuments.Add(await _documentService.AddForOwnerAsync(userId, document));
+            await _unitOfWork.SaveChangesAsync();
         }
-
-        await _unitOfWork.SaveChangesAsync();
+        catch
+        {
+            await RemoveStoredFilesAsync(storedDocumentIds);
+            throw;
+        }
 
         foreach (var document in createdDocuments)
         {
@@ -102,6 +135,42 @@ public class DocumentController : ControllerBase
         return Ok(document.Adapt<DocumentDto>());
     }
 
+    [HttpGet("{id:guid}/users")]
+    public async Task<ActionResult<List<UserDocumentDto>>> GetUsers(Guid id)
+    {
+        var document = await _documentService.GetWithUsersAsync(id);
+        if (document == null || !await _documentService.HasAccessAsync(User.GetUserId(), id))
+        {
+            return NotFound($"Document with ID {id} not found.");
+        }
+
+        var users = document.UserDocuments
+            .OrderBy(ud => ud.Permission != Permission.Owner)
+            .ThenBy(ud => ud.CreatedAt)
+            .Adapt<List<UserDocumentDto>>();
+
+        return Ok(users);
+    }
+
+    [HttpGet("{id:guid}/download")]
+    public async Task<ActionResult> Download(Guid id)
+    {
+        var document = await _documentService.GetByIdAsync(id);
+        if (document == null || !await _documentService.HasAccessAsync(User.GetUserId(), id))
+        {
+            return NotFound($"Document with ID {id} not found.");
+        }
+
+        var storedFile = await _fileStorage.DownloadAsync(id);
+        if (storedFile == null)
+        {
+            return NotFound($"File for document with ID {id} not found.");
+        }
+
+        var fileName = string.IsNullOrEmpty(document.Type) ? document.Name : $"{document.Name}.{document.Type}";
+        return File(storedFile.Content, storedFile.ContentType, fileName);
+    }
+
     [HttpGet("search")]
     public async Task<ActionResult<List<DocumentDto>>> Search([FromQuery] string query)
     {
@@ -136,6 +205,44 @@ public class DocumentController : ControllerBase
 
         await _unitOfWork.SaveChangesAsync();
 
+        await RemoveFromStorageAndIndexAsync(id);
+
         return NoContent();
+    }
+
+    private async Task RemoveStoredFilesAsync(IEnumerable<Guid> documentIds)
+    {
+        foreach (var documentId in documentIds)
+        {
+            try
+            {
+                await _fileStorage.DeleteAsync(documentId);
+            }
+            catch (StorageException ex)
+            {
+                _logger.LogWarning(ex, "Could not remove stored file for document {DocumentId} after a failed upload", documentId);
+            }
+        }
+    }
+
+    private async Task RemoveFromStorageAndIndexAsync(Guid documentId)
+    {
+        try
+        {
+            await _fileStorage.DeleteAsync(documentId);
+        }
+        catch (StorageException ex)
+        {
+            _logger.LogWarning(ex, "Could not remove stored file for deleted document {DocumentId}", documentId);
+        }
+
+        try
+        {
+            await _searchIndex.DeleteAsync(documentId);
+        }
+        catch (SearchIndexException ex)
+        {
+            _logger.LogWarning(ex, "Could not remove deleted document {DocumentId} from the search index", documentId);
+        }
     }
 }

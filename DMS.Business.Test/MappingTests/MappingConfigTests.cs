@@ -78,6 +78,28 @@ public class MappingConfigTests
     }
 
     [Test]
+    public void Document_To_DocumentDto_MapsUpdatedOnOcrStatusAndMetadata()
+    {
+        var doc = new Document
+        {
+            EntityId = Guid.NewGuid(),
+            Name = "tax_return",
+            Type = "pdf",
+            OcrStatus = OcrStatus.Done,
+            Metadata = new DocumentMetadata { ContentType = "application/pdf", PageCount = 3 },
+            CreatedAt = new DateTime(2025, 2, 1, 10, 0, 0, DateTimeKind.Utc),
+            UpdatedOn = new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc)
+        };
+
+        var dto = doc.Adapt<DocumentDto>(_config);
+
+        Assert.That(dto.UpdatedOn, Is.EqualTo(doc.UpdatedOn));
+        Assert.That(dto.OcrStatus, Is.EqualTo("Done"));
+        Assert.That(dto.Metadata.ContentType, Is.EqualTo("application/pdf"));
+        Assert.That(dto.Metadata.PageCount, Is.EqualTo(3));
+    }
+
+    [Test]
     public void UserDocument_To_UserDocumentDto_WithNavigationProperties_MapsCorrectly()
     {
         var userId = Guid.NewGuid();
