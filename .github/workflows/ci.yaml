@@ -89,6 +89,14 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/dms-api:latest
+
+      - name: Build and push OCR Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./DMS.OCR/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/dms-ocr:latest
   
       - name: Build and push Web image
         uses: docker/build-push-action@v5

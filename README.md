@@ -1,22 +1,27 @@
 # Document Management System (DMS)
 
-DMS is a document management system we are building as a semester project. Users can register, log in, upload documents and search them. The backend is an ASP.NET Core REST API (.NET 10) with PostgreSQL, the frontend is a React app. After every upload a message is sent to RabbitMQ so the document can be processed by an OCR worker later on.
+DMS is a document management system we are building as a semester project. Users can register, log in, upload documents and search them. The backend is an ASP.NET Core REST API (.NET 10) with PostgreSQL, the frontend is a React app. After every upload a message is sent to RabbitMQ so the document can be processed by an OCR worker.
 
 ## Features
 
 - Register and log in (JWT)
 - Upload one or more files at once
-- List, search (by name) and delete documents
+- List, search (by name and full-text via Elasticsearch) and delete documents
 - Look up users by ID, username or email
 - Swagger UI for the API
 - Share requests and document permissions are already implemented in the business layer, but not yet available through the API
-- OCR worker is connected to RabbitMQ, but the actual OCR part is still missing
+- Standalone OCR worker using Ghostscript and Tesseract for German, English and handwritten documents
+- Two-way messaging queue: OCR request queue and status response queue (Pending, Processing, Done, Failed)
+- Original file storage in RustFS (S3-compatible) and full-text search indexing in Elasticsearch
 
 ## Tech stack
 
 - Backend: ASP.NET Core, Entity Framework Core (Npgsql), FluentValidation, Mapster, MassTransit
 - Database: PostgreSQL 17
 - Messaging: RabbitMQ 4
+- File Storage: RustFS (S3-compatible object storage)
+- Search Engine: Elasticsearch 8 & Kibana
+- OCR Engine: Ghostscript & Tesseract OCR (German `deu`, English `eng`, high DPI rasterization for handwriting)
 - Frontend: React 19 with TypeScript, Vite, Tailwind CSS and React Router, served by nginx
 - Tests: NUnit, Moq, MockQueryable
 - CI: GitHub Actions
@@ -25,14 +30,17 @@ Everything runs in Docker Compose.
 
 ## Architecture
 
-The backend is split into layers. Each project only knows about the layer below it.
+The backend is split into decoupled layers and microservices. Each project only knows about the layer below it.
 
 - `DMS.Web` is the React frontend. nginx serves it and forwards everything under `/api/*` to the API.
-- `DMS.API` contains the controllers, JWT authentication, a validation filter and the global exception handler. All dependencies are registered in `Program.cs`.
+- `DMS.API` contains the controllers, JWT authentication, a validation filter, the global exception handler, and the response queue consumer (`OcrResponseConsumer`).
+- `DMS.OCR` is an independent worker service that consumes OCR processing requests from RabbitMQ, downloads PDFs from RustFS, performs OCR using Ghostscript and Tesseract (supporting German, English, and handwritten files), saves the result into Elasticsearch, and reports processing and completion status back to the API via a dedicated response queue.
 - `DMS.Business` contains the services (`DocumentService`, `UserService`, `ShareRequestService`, `UserDocumentService`) and the `UnitOfWork`.
-- `DMS.Business.Models` holds the DTOs, validators, the Mapster config and the RabbitMQ message and consumer.
-- `DMS.DAL` holds the `DmsDbContext`, the entities and the EF Core configurations.
-- `DMS.API.Test`, `DMS.Business.Test` and `DMS.DAL.Test` are the test projects.
+- `DMS.Business.Models` holds the DTOs, validators, Mapster config, and the messaging contracts (`ProcessOcrDocument`, `OcrDocumentResponse`).
+- `DMS.Storage` encapsulates object storage via RustFS (S3 API).
+- `DMS.ELK` encapsulates indexing and full-text search via Elasticsearch.
+- `DMS.DAL` holds the `DmsDbContext`, the entities, and the EF Core configurations.
+- `DMS.API.Test`, `DMS.Business.Test`, `DMS.DAL.Test`, and `DMS.OCR.Test` are the test projects.
 
 ```mermaid
 flowchart LR
@@ -41,8 +49,13 @@ flowchart LR
     API --> Business[DMS.Business]
     Business --> DAL[DMS.DAL]
     DAL --> DB[(PostgreSQL)]
-    API -- ProcessOcrDocument --> MQ[[RabbitMQ]]
-    MQ --> OCR[OcrWorkerConsumer]
+    API -- "upload / download" --> RustFS[(RustFS)]
+    API -- "publish (ProcessOcrDocument)" --> MQ[[RabbitMQ]]
+    MQ -- "ocr-process-queue" --> OCR[DMS.OCR]
+    OCR -- "fetch original PDF" --> RustFS
+    OCR -- "index extracted text" --> ES[(Elasticsearch)]
+    OCR -- "publish status (OcrDocumentResponse)" --> MQ
+    MQ -- "ocr-response-queue" --> API
 ```
 
 A typical request goes like this: the controller gets a DTO, the `ValidationFilter` validates it, the service does the actual work on the entities and at the end `UnitOfWork.SaveChangesAsync()` saves everything in one go. The result is mapped back to a DTO with Mapster. If something goes wrong, the service throws an exception and the `GlobalExceptionHandler` turns it into a `ProblemDetails` response.
@@ -60,24 +73,36 @@ erDiagram
 
 `UserDocument` is the join table between users and documents and stores the permission (`Owner` or `User`). We designed the schema in drawSQL, the export (`drawSQL-pgsql-export-2026-09-24.sql`) is loaded automatically when the database container starts for the first time.
 
-### Upload
+### Upload & OCR Flow
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant A as DocumentController
     participant S as DocumentService
+    participant R as RustFS
     participant Q as RabbitMQ
-    participant O as OcrWorkerConsumer
+    participant W as DMS.OCR
+    participant ES as Elasticsearch
+    participant C as OcrResponseConsumer (API)
 
     U->>A: POST /Document/upload
     loop each file
         A->>S: AddForOwnerAsync
+        A->>R: UploadAsync (store original PDF)
         A->>Q: publish ProcessOcrDocument
     end
     A->>A: SaveChangesAsync
-    A-->>U: list of DocumentDto
-    Q->>O: consume (async)
+    A-->>U: list of DocumentDto (Status: Pending)
+
+    Q->>W: consume ProcessOcrDocument (ocr-process-queue)
+    W->>Q: publish OcrDocumentResponse (Status: Processing)
+    Q->>C: consume OcrDocumentResponse -> Update Document.OcrStatus = Processing
+    W->>R: DownloadAsync (fetch original PDF)
+    W->>W: Run Ghostscript + Tesseract OCR (deu+eng, 300 DPI)
+    W->>ES: IndexAsync (store OCR text in Elasticsearch)
+    W->>Q: publish OcrDocumentResponse (Status: Done, ExtractedText)
+    Q->>C: consume OcrDocumentResponse -> Update Document.OcrStatus = Done
 ```
 
 ## Design decisions
@@ -99,7 +124,7 @@ For errors there is one global exception handler. The services just throw except
 
 Login uses JWT because the frontend is a separate app and we didn't want server-side sessions. Passwords are hashed with PBKDF2 (SHA-256, 600,000 iterations) from the .NET crypto library, so no extra package was needed. The hash has a version prefix, which means we can change the parameters later and old hashes get updated on the next login.
 
-OCR takes time, so it shouldn't block the upload. That's why the API only publishes a message to RabbitMQ (via MassTransit) and the consumer handles it in the background.
+OCR is compute-heavy, so it is detached into its own independent C# service (`DMS.OCR`) that runs outside the API. A dedicated request queue (`ocr-process-queue`) feeds incoming jobs to the worker, and a dedicated response queue (`ocr-response-queue`) informs the API when processing begins (`Processing`), succeeds (`Done`), or fails (`Failed`).
 
 Because nginx proxies `/api` to the backend, frontend and API run under the same origin and we don't need any CORS setup.
 
@@ -107,7 +132,7 @@ Configuration like connection strings and passwords is passed in through env fil
 
 ## Getting started
 
-You need Docker and Docker Compose. If you want to run it without Docker, you need the .NET 10 SDK, Node.js 24 and a PostgreSQL 17 instance.
+You need Docker and Docker Compose. If you want to run it without Docker, you need the .NET 10 SDK, Node.js 24, Ghostscript, Tesseract OCR and a PostgreSQL 17 instance.
 
 ### Env file
 
@@ -145,6 +170,9 @@ After that the following is available:
 | PostgreSQL | localhost:5432 |
 | RabbitMQ | localhost:5672 |
 | RabbitMQ Management | http://localhost:15672 |
+| RustFS Console | http://localhost:9001 |
+| Elasticsearch | http://localhost:9200 |
+| Kibana | http://localhost:5601 |
 
 ### Stop / reset
 
@@ -177,10 +205,11 @@ We mainly write unit tests with NUnit. Dependencies are mocked with Moq. To mock
 
 There is one test project per layer:
 
-- `DMS.API.Test` tests the `DocumentController` and `UserController`, e.g. if the right status codes come back and if the services are called correctly.
+- `DMS.API.Test` tests the `DocumentController`, `UserController`, and `OcrResponseConsumer`.
 - `DMS.Business.Test` tests the services and their rules, for example that you can't share a document with yourself, that a user can't get access to the same document twice, or that an error is thrown for unknown users.
 - `DMS.Business.Test/DtoValidatorTests` checks the validators with valid and invalid input.
-- `DMS.DAL.Test` exists but has no tests yet.
+- `DMS.OCR.Test` tests `OcrWorkerConsumer` (message processing, S3 download, Elasticsearch indexing, and response queue publishing) and `GhostscriptTesseractOcrService`.
+- `DMS.DAL.Test` exists for data access layer tests.
 
 Run all tests with:
 
@@ -226,11 +255,10 @@ What has been done so far:
 - Logging, dashboard improvements and more tests (#25)
 - Exception handling, frontend and business layer changes (#26)
 - RabbitMQ/MassTransit for OCR, env files, frontend build in CI (#28)
+- Standalone `DMS.OCR` project with Ghostscript + Tesseract OCR, RustFS integration, Elasticsearch indexing, and two-way queue status updates (#29)
 
 Still open:
 
-- actual OCR processing in `OcrWorkerConsumer` (right now it only logs)
-- storing the file content (right now only metadata is saved)
 - share requests in the API and the UI
 - frontend tests and the test step in the CI
 - tests for `DMS.DAL.Test`
