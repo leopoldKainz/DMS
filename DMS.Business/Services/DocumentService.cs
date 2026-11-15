@@ -52,10 +52,19 @@ public class DocumentService : BaseService<Document>, IDocumentService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Document>> SearchByNameAsync(Guid userId, string searchTerm, CancellationToken ct = default)
+    /// <summary>
+    /// Returns the documents the user has access to that either match the search term by name
+    /// or were found by the search index (full-text match on the OCR content), see <paramref name="matchingDocumentIds"/>.
+    /// Access is always checked here, the search index knows nothing about permissions.
+    /// </summary>
+    public async Task<IReadOnlyList<Document>> SearchAsync(Guid userId, string searchTerm, IReadOnlyCollection<Guid> matchingDocumentIds, CancellationToken ct = default)
     {
+        var term = searchTerm.ToLower();
+
         return await _context.UserDocuments
-            .Where(ud => ud.User.EntityId == userId && EF.Functions.ILike(ud.Document.Name, $"%{searchTerm}%"))
+            .Where(ud => ud.User.EntityId == userId
+                         && (matchingDocumentIds.Contains(ud.Document.EntityId)
+                             || ud.Document.Name.ToLower().Contains(term)))
             .Select(ud => ud.Document)
             .AsNoTracking()
             .ToListAsync(ct);
